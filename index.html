@@ -2,6 +2,17 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+  <!-- PWA -->
+  <meta name="theme-color" content="#0D1B3E">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="GrupoFX">
+  <meta name="application-name" content="GrupoFX">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Grupo FX — Almoxarifado</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Great+Vibes&family=Cormorant+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -207,6 +218,22 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
 }
 @keyframes slideUp{from{transform:translateY(30px);opacity:0;}to{transform:translateY(0);opacity:1;}}
 @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+
+/* PWA INSTALL BANNER */
+#pwa-banner{
+  position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+  z-index:8500;background:#0D1B3E;color:#fff;
+  border-radius:16px;padding:14px 20px;
+  box-shadow:0 8px 32px rgba(0,0,0,.4);
+  display:none;align-items:center;gap:14px;
+  width:320px;border:1px solid #1E6FD9;
+  animation:slideUp .3s ease;
+}
+#pwa-banner img{width:40px;height:40px;border-radius:10px;}
+#pwa-banner .pwa-txt{flex:1;}
+#pwa-banner .pwa-title{font-size:12px;font-weight:700;color:#fff;margin-bottom:2px;}
+#pwa-banner .pwa-sub{font-size:10px;color:#8AABDB;}
+#pwa-banner .pwa-btns{display:flex;flex-direction:column;gap:6px;}
 
 /* BACKUP BANNER */
 .backup-banner{
@@ -3290,6 +3317,40 @@ async function sincronizarTudo(){
   }catch(e){toast('Erro: '+e.message);}
 }
 
+
+// ============================================================
+// PWA — BANNER INSTALAR COMO APP
+// ============================================================
+var deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault();
+  deferredPrompt = e;
+  // Mostrar banner após 5s do login
+  setTimeout(mostrarBannerPWA, 5000);
+});
+
+function mostrarBannerPWA(){
+  var banner = document.getElementById('pwa-banner');
+  if(banner && deferredPrompt) banner.style.display='flex';
+}
+
+function instalarApp(){
+  var banner = document.getElementById('pwa-banner');
+  if(banner) banner.style.display='none';
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(function(r){
+    if(r.outcome==='accepted') toast('✅ GrupoFX instalado como app!');
+    deferredPrompt = null;
+  });
+}
+
+function fecharBannerPWA(){
+  var banner = document.getElementById('pwa-banner');
+  if(banner) banner.style.display='none';
+}
+
 // Init — só roda após login
 if(!db.fornecedores) db.fornecedores=[];
 if(!db.produtosExtras) db.produtosExtras=[];
@@ -3325,6 +3386,19 @@ setTimeout(atualizarSelectEmpresas,200);
 </div>
 
 
+<!-- BANNER PWA INSTALAR -->
+<div id="pwa-banner">
+  <img src="/icon-192.png" alt="GrupoFX">
+  <div class="pwa-txt">
+    <div class="pwa-title">📱 Instalar como App</div>
+    <div class="pwa-sub">Adicione à tela inicial do celular</div>
+  </div>
+  <div class="pwa-btns">
+    <button class="btn gold" onclick="instalarApp()" style="font-size:10px;padding:6px 12px;">Instalar</button>
+    <button class="btn sm" onclick="fecharBannerPWA()" style="font-size:10px;padding:4px 10px;color:rgba(255,255,255,.4);border-color:rgba(255,255,255,.15);">Agora não</button>
+  </div>
+</div>
+
 <!-- BANNER BACKUP -->
 <div id="backup-banner" style="display:none;" class="backup-banner">
   <div class="backup-banner-icon">💾</div>
@@ -3338,5 +3412,15 @@ setTimeout(atualizarSelectEmpresas,200);
   </div>
 </div>
 
+
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('/sw.js')
+      .then(function(reg){ console.log('GrupoFX PWA: SW registrado', reg.scope); })
+      .catch(function(err){ console.log('SW erro:', err); });
+  });
+}
+</script>
 </body>
 </html>

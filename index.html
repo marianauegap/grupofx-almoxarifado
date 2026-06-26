@@ -143,6 +143,8 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:
   transition:all .15s;letter-spacing:.02em;
 }
 .tb-u:hover{color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.2);}
+.tb-u-todas{border-style:dashed!important;opacity:.85;}
+.tb-u-todas.on{opacity:1;background:var(--surface)!important;color:var(--gold)!important;border-color:var(--gold)!important;}
 .tb-u.on{
   background:var(--gold);border-color:var(--gold);
   color:#0E0E0E;font-weight:700;
@@ -507,11 +509,11 @@ table.t tr:hover td{background:var(--surface);}
 
       <div class="login-fg">
         <label class="login-lbl">Usuário</label>
-        <input class="login-input" id="login-user" value="almoxarifado" autocomplete="username">
+        <input class="login-input" id="login-user" value="" autocomplete="username">
       </div>
       <div class="login-fg">
         <label class="login-lbl">Senha</label>
-        <input class="login-input" type="password" id="login-pass" value="123" autocomplete="current-password" onkeydown="if(event.key==='Enter')fazerLogin()">
+        <input class="login-input" type="password" id="login-pass" value="" autocomplete="current-password" onkeydown="if(event.key==='Enter')fazerLogin()">
       </div>
       <button class="login-btn" onclick="fazerLogin()">ENTRAR NO SISTEMA</button>
       <div class="login-err" id="login-err"></div>
@@ -612,6 +614,7 @@ table.t tr:hover td{background:var(--surface);}
     <div class="tb-u on" onclick="selUnit(this)">Bragança Paulista</div>
     <div class="tb-u" onclick="selUnit(this)">Extrema</div>
     <div class="tb-u" onclick="selUnit(this)">Guarulhos</div>
+    <div class="tb-u tb-u-todas" onclick="selUnit(this)" title="Ver totais de todas as unidades">📊 Todas</div>
   </div>
 
   <!-- CLOCK -->
@@ -720,6 +723,11 @@ table.t tr:hover td{background:var(--surface);}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
       Trocar Senhas
     </div>
+
+
+    <div class="sb-item admin-only" style="display:none;" onclick="go('adm-relatorio')">
+      <span class="sb-ic">📊</span><span class="sb-txt">Relatório geral</span>
+    </div>
     <div class="sb-item admin-only" style="display:none;" onclick="go('adm-backup')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Backup de Dados
@@ -801,19 +809,85 @@ table.t tr:hover td{background:var(--surface);}
 
 <!-- ================= SAÍDA (novo fluxo prático) ================= -->
 <div class="page" id="page-saida">
-  <div class="ph"><div><div class="pt">Saída de uniforme</div><div class="ps">Selecione a empresa — o kit é carregado automaticamente</div></div></div>
+  <div class="ph">
+    <div><div class="pt">Saída de uniforme</div><div class="ps" id="sai-subtitulo">Selecione a empresa — o kit é carregado automaticamente</div></div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <button id="sai-tab-func" onclick="setSaiMode('func')" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--gold);background:var(--gold);color:#fff;font-size:11px;font-weight:700;cursor:pointer;">👤 Funcionário</button>
+      <button id="sai-tab-transf" onclick="setSaiMode('transf')" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;">🔄 Transferência</button>
+    </div>
+  </div>
   <div class="card">
     <div id="alert-sai"></div>
+    <!-- MODO TRANSFERÊNCIA -->
+    <div id="transf-area" style="display:none;">
+      <div class="sec-lbl">Transferência de estoque entre unidades</div>
+      <div class="fr2">
+        <div class="fg">
+          <label class="fl">Unidade de Origem</label>
+          <select class="fs" id="transf-origem">
+            <option value="">— Selecione a origem —</option>
+            <option>Bragança Paulista</option>
+            <option>Extrema</option>
+            <option>Guarulhos</option>
+            <option>Linhares</option>
+            <option>Serra</option>
+            <option>SJP</option>
+            <option>Santo André</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="fl">Unidade de Destino</label>
+          <select class="fs" id="transf-destino">
+            <option value="">— Selecione o destino —</option>
+            <option>Bragança Paulista</option>
+            <option>Extrema</option>
+            <option>Guarulhos</option>
+            <option>Linhares</option>
+            <option>Serra</option>
+            <option>SJP</option>
+            <option>Santo André</option>
+          </select>
+        </div>
+      </div>
+      <div class="fr3">
+        <div class="fg">
+          <label class="fl">Produto</label>
+          <select class="fs" id="transf-prod" onchange="buildTransfTams()">
+            <option value="">— Selecione —</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="fl">Tamanho</label>
+          <select class="fs" id="transf-tam">
+            <option value="">— Selecione —</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="fl">Quantidade</label>
+          <input class="fi" type="number" id="transf-qtd" placeholder="0" min="1">
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Observação</label><input class="fi" id="transf-obs" placeholder="Ex: Reforço de estoque para demanda DHL"></div>
+      <div id="transf-estoque-info" style="font-size:11px;color:var(--muted);margin:4px 0 8px 0;"></div>
+      <div class="btn-row">
+        <button class="btn gold" onclick="registrarTransferencia()">🔄 Confirmar Transferência</button>
+      </div>
+      <div id="lista-transf" style="margin-top:16px;"></div>
+    </div>
     <div id="alert-pendente" style="display:none;background:#FFF8E1;border:1.5px solid #F59E0B;border-radius:8px;padding:12px 14px;margin-bottom:10px;font-size:12px;color:#92400E;"></div>
-    <div class="sec-lbl">Dados do funcionário</div>
+    <div id="dados-func-wrap"><div class="sec-lbl">Dados do funcionário</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button id="sai-tipo-func" onclick="setSaiTipo('funcionario')" style="padding:6px 16px;border-radius:20px;border:2px solid var(--gold);background:var(--gold);color:#fff;font-size:11px;font-weight:700;cursor:pointer;">👤 Funcionário</button>
+      <button id="sai-tipo-prep" onclick="setSaiTipo('preposto')" style="padding:6px 16px;border-radius:20px;border:2px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;">🏢 Preposto</button>
+    </div>
     <div class="fr2">
-      <div class="fg"><label class="fl">Nome completo</label><input class="fi" id="sai-nome" placeholder="Nome completo"></div>
+      <div class="fg"><label class="fl" id="sai-nome-label">Nome completo</label><input class="fi" id="sai-nome" placeholder="Nome completo"></div>
       <div class="fg"><label class="fl">CPF</label><input class="fi" id="sai-cpf" placeholder="000.000.000-00" onblur="verificarPendenteCPF()"></div>
     </div>
     <div class="fr3">
       <div class="fg"><label class="fl">Contato / WhatsApp</label><input class="fi" id="sai-tel" placeholder="11 9xxxx-xxxx"></div>
       <div class="fg"><label class="fl">Unidade</label>
-        <select class="fs" id="sai-uni"><option value="">Selecione</option><option>Bragança Paulista</option><option>Extrema</option><option>Guarulhos</option></select>
+        <select class="fs" id="sai-uni"><option value="">Selecione</option><option>Bragança Paulista</option><option>Extrema</option><option>Guarulhos</option><option>Linhares</option><option>Serra</option><option>SJP</option><option>Santo André</option></select>
       </div>
       <div class="fg"><label class="fl">Cliente / Empresa</label>
         <select class="fs" id="sai-cli" onchange="carregarKit()">
@@ -852,10 +926,31 @@ table.t tr:hover td{background:var(--surface);}
       </div>
     </div>
 
+    </div><!-- /dados-func-wrap -->
     <!-- KIT AREA -->
     <div id="kit-area" style="display:none;">
       <div class="sec-lbl" style="margin-top:4px;">Kit padrão — selecione os tamanhos entregues</div>
       <div id="kit-itens"></div>
+      <div class="fg" style="margin-top:8px;">
+        <label class="fl">🗺️ Destino <span style="font-size:10px;color:var(--muted);font-weight:400;">(se for para outra região)</span></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <select class="fs" id="sai-destino" style="flex:1;min-width:160px;" onchange="onSaiDestinoChange()">
+            <option value="">— Uso local (sem destino especial)</option>
+            <option value="Cuiabá">📍 Cuiabá - MT</option>
+            <option value="Recife">📍 Recife - PE</option>
+            <option value="Manaus">📍 Manaus - AM</option>
+            <option value="Belém">📍 Belém - PA</option>
+            <option value="Fortaleza">📍 Fortaleza - CE</option>
+            <option value="Salvador">📍 Salvador - BA</option>
+            <option value="Brasília">📍 Brasília - DF</option>
+            <option value="Campo Grande">📍 Campo Grande - MS</option>
+            <option value="Dourados">📍 Dourados - MS</option>
+            <option value="Suzano">📍 Suzano - SP</option>
+            <option value="outro">✏️ Outra cidade...</option>
+          </select>
+          <input class="fi" id="sai-destino-custom" placeholder="Digite a cidade" style="display:none;flex:1;min-width:140px;">
+        </div>
+      </div>
       <div class="fg" style="margin-top:8px;"><label class="fl">Observação</label><textarea class="fi" id="sai-obs" rows="2" style="resize:none;"></textarea></div>
       <div class="btn-row" style="margin-top:4px;">
         <button class="btn amb full" onclick="registrarSaida('Parcial')">🟠 Registrar como Parcial</button>
@@ -865,12 +960,26 @@ table.t tr:hover td{background:var(--surface);}
   </div>
 
   <div class="card">
-    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
-      Saídas registradas
-      <div style="display:flex;gap:5px;">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+      <span>Saídas registradas</span>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;">
+        <select id="sai-filtro-uni" onchange="renderSaidas()" class="fs" style="font-size:11px;padding:4px 8px;height:28px;min-width:130px;">
+          <option value="">Todas as unidades</option>
+          <option>Bragança Paulista</option>
+          <option>Extrema</option>
+          <option>Guarulhos</option>
+        </select>
+        <select id="sai-filtro-dest" onchange="renderSaidas()" class="fs" style="font-size:11px;padding:4px 8px;height:28px;min-width:110px;">
+          <option value="">Todos os destinos</option>
+          <option value="__local__">Sem destino</option>
+          <option>Cuiabá</option><option>Recife</option><option>Manaus</option>
+          <option>Belém</option><option>Fortaleza</option><option>Salvador</option>
+          <option>Brasília</option><option>Campo Grande</option><option>Dourados</option><option>Suzano</option>
+        </select>
         <button id="f-todos" onclick="filtrarSaidas('todos',this)" class="btn sm gold">Todos</button>
         <button id="f-comp" onclick="filtrarSaidas('Completo',this)" class="btn sm">🟢 Completo</button>
         <button id="f-parc" onclick="filtrarSaidas('Parcial',this)" class="btn sm">🟠 Parcial</button>
+        <button onclick="exportarSaidasExcel()" class="btn sm" style="border-color:var(--green);color:var(--green);">📥 Excel</button>
       </div>
     </div>
     <div id="lista-saidas"><div class="empty">Nenhuma saída registrada ainda.</div></div>
@@ -899,7 +1008,7 @@ table.t tr:hover td{background:var(--surface);}
       <div class="fg"><label class="fl">Quantidade</label><input class="fi" type="number" id="ent-qtd" placeholder="0" min="1"></div>
     </div>
     <div class="fr3">
-      <div class="fg"><label class="fl">Unidade</label><select class="fs" id="ent-uni"><option>Bragança Paulista</option><option>Extrema</option><option>Guarulhos</option></select></div>
+      <div class="fg"><label class="fl">Unidade</label><select class="fs" id="ent-uni"><option>Bragança Paulista</option><option>Extrema</option><option>Guarulhos</option><option>Linhares</option><option>Serra</option><option>SJP</option><option>Santo André</option></select></div>
       <div class="fg"><label class="fl">Fornecedor</label>
         <select class="fs" id="ent-forn">
           <option value="">— Selecione —</option>
@@ -939,11 +1048,42 @@ table.t tr:hover td{background:var(--surface);}
         <span id="ent-arquivo-nome" style="font-size:10px;color:var(--green);margin-top:2px;"></span>
       </div>
     </div>
+    <div class="fg">
+      <label class="fl">🗺️ Destino <span style="font-size:10px;color:var(--muted);font-weight:400;">(se for para outra região)</span></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <select class="fs" id="ent-destino" style="flex:1;min-width:160px;" onchange="onDestinoChange()">
+          <option value="">— Uso local (sem destino especial)</option>
+          <option value="Cuiabá">📍 Cuiabá - MT</option>
+          <option value="Recife">📍 Recife - PE</option>
+          <option value="Manaus">📍 Manaus - AM</option>
+          <option value="Belém">📍 Belém - PA</option>
+          <option value="Fortaleza">📍 Fortaleza - CE</option>
+          <option value="outro">✏️ Outra cidade...</option>
+        </select>
+        <input class="fi" id="ent-destino-custom" placeholder="Digite a cidade" style="display:none;flex:1;min-width:140px;">
+      </div>
+    </div>
     <div class="fg"><label class="fl">Observações</label><input class="fi" id="ent-obs" placeholder="Opcional"></div>
     <div class="ff"><button class="btn gold full" onclick="registrarEntrada()">Confirmar entrada</button></div>
   </div>
   <div class="card">
-    <div class="card-title">Entradas registradas</div>
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+      <span>Entradas registradas</span>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;">
+        <select id="ent-filtro-uni" onchange="renderEntradas()" class="fs" style="font-size:11px;padding:4px 8px;height:28px;min-width:130px;">
+          <option value="">Todas as unidades</option>
+          <option>Bragança Paulista</option><option>Extrema</option><option>Guarulhos</option><option>Linhares</option><option>Serra</option><option>SJP</option><option>Santo André</option>
+        </select>
+        <select id="ent-filtro-dest" onchange="renderEntradas()" class="fs" style="font-size:11px;padding:4px 8px;height:28px;min-width:110px;">
+          <option value="">Todos os destinos</option>
+          <option value="__local__">Sem destino</option>
+          <option>Cuiabá</option><option>Recife</option><option>Manaus</option>
+          <option>Belém</option><option>Fortaleza</option><option>Salvador</option>
+          <option>Brasília</option><option>Campo Grande</option><option>Dourados</option><option>Suzano</option>
+        </select>
+        <button onclick="exportarEntradasExcel()" class="btn sm" style="border-color:var(--green);color:var(--green);">📥 Excel</button>
+      </div>
+    </div>
     <div id="lista-entradas"><div class="empty">Nenhuma entrada registrada ainda.</div></div>
   </div>
 </div>
@@ -961,7 +1101,7 @@ table.t tr:hover td{background:var(--surface);}
     <div class="fr3">
       <div class="fg"><label class="fl">Contato / WhatsApp</label><input class="fi" id="dev-tel" placeholder="11 9xxxx-xxxx"></div>
       <div class="fg"><label class="fl">Unidade</label>
-        <select class="fs" id="dev-uni"><option value="">Selecione</option><option>Bragança Paulista</option><option>Extrema</option><option>Guarulhos</option></select>
+        <select class="fs" id="dev-uni"><option value="">Selecione</option><option>Bragança Paulista</option><option>Extrema</option><option>Guarulhos</option><option>Linhares</option><option>Serra</option><option>SJP</option><option>Santo André</option></select>
       </div>
       <div class="fg"><label class="fl">Empresa</label>
         <select class="fs" id="dev-emp" onchange="carregarKitDev()">
@@ -1002,10 +1142,32 @@ table.t tr:hover td{background:var(--surface);}
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
-      Devoluções registradas
-      <div style="display:flex;gap:5px;">
+  <!-- PAINEL TOTAIS DEVOLUÇÃO -->
+  <div class="card" id="dev-totais-card" style="margin-bottom:0;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+      <div style="font-weight:700;font-size:13px;color:var(--ink);">📊 Total devolvido acumulado</div>
+      <button onclick="exportarDevolucoesExcel()" style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;">📥 Excel</button>
+    </div>
+    <div id="dev-totais-lista" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+  </div>
+
+  <div class="card" style="padding:0;margin-top:12px;">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+      <span>Devoluções registradas</span>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;">
+        <select id="dev-filtro-periodo" onchange="renderDevs()" class="fs" style="font-size:11px;padding:4px 8px;height:28px;min-width:110px;">
+          <option value="">Todos os períodos</option>
+          <option value="hoje">Hoje</option>
+          <option value="semana">Esta semana</option>
+          <option value="mes">Este mês</option>
+          <option value="mes_anterior">Mês anterior</option>
+        </select>
+        <select id="dev-filtro-status-lav" onchange="renderDevs()" class="fs" style="font-size:11px;padding:4px 8px;height:28px;min-width:130px;">
+          <option value="">Todos</option>
+          <option value="aguardando">🧺 Aguardando lavanderia</option>
+          <option value="enviado">🚚 Na lavanderia</option>
+          <option value="arquivado">📁 Arquivados</option>
+        </select>
         <button onclick="filtrarDevs('todos',this)" class="btn sm gold">Todos</button>
         <button onclick="filtrarDevs('Completo',this)" class="btn sm">🟢 Completo</button>
         <button onclick="filtrarDevs('Parcial',this)" class="btn sm">🟠 Parcial</button>
@@ -1038,7 +1200,26 @@ table.t tr:hover td{background:var(--surface);}
 
 <!-- ALERTAS -->
 <div class="page" id="page-alertas">
-  <div class="ph"><div><div class="pt">Alertas de estoque</div><div class="ps">Itens com quantidade baixa</div></div></div>
+  <div class="ph">
+    <div><div class="pt">Alertas de estoque</div><div class="ps">Itens com quantidade abaixo do mínimo configurado</div></div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+      <select id="alert-filtro-uni" onchange="renderAlertas()" class="fs" style="font-size:11px;padding:4px 8px;height:28px;min-width:140px;">
+        <option value="">Todas as unidades</option>
+        <option>Bragança Paulista</option>
+        <option>Extrema</option>
+        <option>Guarulhos</option>
+        <option>Linhares</option>
+        <option>Serra</option>
+        <option>SJP</option>
+        <option>Santo André</option>
+      </select>
+      <label style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap;">
+        Limite crítico:
+        <input type="number" id="alert-limite" value="5" min="1" max="99" onchange="renderAlertas()" style="width:48px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-weight:700;text-align:center;">
+        un.
+      </label>
+    </div>
+  </div>
 
   <!-- SEÇÃO: ESTOQUE BAIXO -->
   <div class="card" style="padding:0;">
@@ -1048,7 +1229,7 @@ table.t tr:hover td{background:var(--surface);}
     </div>
     <div class="tbl-wrap">
       <table class="t">
-        <thead><tr><th>Produto</th><th>Tamanho</th><th>Unidade</th><th>Qtd</th><th>Nível</th></tr></thead>
+        <thead><tr><th>Produto</th><th>Tamanho</th><th>Unidade</th><th>Qtd</th><th>Mínimo</th><th>Nível</th></tr></thead>
         <tbody id="alertas-body"></tbody>
       </table>
     </div>
@@ -1057,13 +1238,23 @@ table.t tr:hover td{background:var(--surface);}
 
 <!-- ESTOQUE -->
 <div class="page" id="page-estoque">
-  <div class="ph"><div><div class="pt">Estoque</div></div>
-    <input class="fi" id="est-busca" placeholder="🔍 Filtrar produto..." style="width:200px;" oninput="renderEstoque()">
+  <div class="ph">
+    <div><div class="pt">Estoque</div><div class="ps" id="est-subtitulo">Bragança Paulista</div></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <input class="fi" id="est-busca" placeholder="🔍 Filtrar produto..." style="width:180px;" oninput="renderEstoque()">
+      <label style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;">
+        <input type="checkbox" id="est-ver-todas" onchange="renderEstoque()" style="accent-color:var(--gold);width:14px;height:14px;">
+        Ver todas as unidades
+      </label>
+      <button class="btn sm" onclick="exportarExcel()" style="border-color:var(--green);color:var(--green);">📥 Excel</button>
+    </div>
   </div>
   <div class="card" style="padding:0;">
     <div class="tbl-wrap">
-      <table class="t"><thead><tr><th>Produto</th><th>Tamanho</th><th>Unidade</th><th style="text-align:right">Qtd</th></tr></thead>
-      <tbody id="est-lista"></tbody></table>
+      <table class="t">
+        <thead id="est-thead"><tr><th>Produto</th><th>Tamanho</th><th>Unidades</th><th style="text-align:right">Total</th><th></th></tr></thead>
+        <tbody id="est-lista"></tbody>
+      </table>
     </div>
   </div>
 </div>
@@ -1234,7 +1425,7 @@ table.t tr:hover td{background:var(--surface);}
         <div class="fg"><label class="fl">Qtd. mínima</label><input class="fi" type="number" id="emin-qtd" placeholder="Ex: 20" min="1"></div>
       </div>
       <div class="fg"><label class="fl">Unidade</label>
-        <select class="fs" id="emin-uni"><option>Bragança Paulista</option><option>Extrema</option><option>Guarulhos</option><option>Todas</option></select>
+        <select class="fs" id="emin-uni"><option>Bragança Paulista</option><option>Extrema</option><option>Guarulhos</option><option>Linhares</option><option>Serra</option><option>SJP</option><option>Santo André</option><option>Todas</option></select>
       </div>
       <div class="ff"><button class="btn gold full" onclick="salvarEstoqueMin()">Salvar mínimo</button></div>
     </div>
@@ -1377,6 +1568,13 @@ table.t tr:hover td{background:var(--surface);}
 </div>
 
 <!-- BACKUP DE DADOS -->
+<div class="page" id="page-adm-relatorio">
+  <div class="ph"><div><div class="pt">Relatório Geral</div><div class="ps">Resumo consolidado por unidade</div></div>
+    <button class="btn" onclick="exportarRelatorioExcel()" style="border-color:var(--green);color:var(--green);">📥 Excel</button>
+  </div>
+  <div id="relatorio-body"></div>
+</div>
+
 <div class="page" id="page-adm-backup">
   <div class="ph"><div><div class="pt">Backup de Dados</div><div class="ps">Exporte e importe todos os dados do sistema</div></div></div>
   <div class="grid2">
@@ -1506,36 +1704,53 @@ async function testarConexao(){
 // KITS POR EMPRESA
 // ============================================================
 const KITS={
-  "ANANDA":           [{u:"Camiseta FX Azul",q:2},{u:"Calça FX Azul",q:2},{u:"Bota Bico de Aço (CA 17014)",q:1}],
-  "CENTAURO":         [{u:"Camiseta FX Azul",q:2},{u:"Calça FX Azul",q:2},{u:"Bota SBF (CA 43377)",q:1},{u:"Moletom Azul",q:1}],
-  "CENTAURO LAPA":    [{u:"Camiseta FX Azul",q:2},{u:"Calça FX Azul",q:2},{u:"Bota SBF (CA 43377)",q:1},{u:"Moletom Azul",q:1}],
-  "DHL - ACF":        [{u:"Bota FX ou SBF",q:1},{u:"Colete Refletivo Laranja",q:1}],
-  "DHL - P&G (ITATIAIA)": [{u:"Camiseta Refletiva",q:2}],
-  "DHL - NISSAN (ITATIAIA)": [{u:"Camiseta Refletiva",q:2}],
-  "DHL DFN":          [{u:"Bota FX ou SBF",q:1},{u:"Colete Refletivo Laranja",q:1}],
-  "DHL BIORAD":       [{u:"Bota FX ou SBF",q:1},{u:"Colete Refletivo Laranja",q:1}],
-  "DHL SPACEX":       [{u:"Bota FX ou SBF",q:1},{u:"Colete Refletivo Laranja",q:1}],
-  "DIARISTA":         [{u:"Camiseta FX Azul",q:1},{u:"Bota FX (CA 31701) ou SBF",q:1}],
-  "EXCIL":            [{u:"Camiseta FX Azul",q:2},{u:"Calça FX Azul",q:2},{u:"Bota Bico de Aço (CA 17014)",q:1}],
-  "EXCIL (SETOR FUNDICAO)": [{u:"Camiseta FX Azul",q:2},{u:"Calça FX Azul",q:2}],
-  "FISIA":            [{u:"Camiseta FX Azul",q:2},{u:"Calça FX Azul",q:2},{u:"Bota SBF (CA 43377)",q:1},{u:"Moletom Azul",q:1}],
-  "ID H&M":           [{u:"Camiseta FX Azul",q:2},{u:"Calça FX Azul",q:2},{u:"Bota FX ou SBF",q:1}],
-  "ID PRIVALIA":      [{u:"Camiseta FX Azul",q:2},{u:"Calça FX Azul",q:2},{u:"Bota FX ou SBF",q:1}],
-  "ID ZARA (CAJAMAR)":[{u:"Camiseta FX Azul",q:2}],
-  "KOPENHAGEN (ALMOXARIFE - INBOUND)":        [{u:"Camiseta FX Marrom",q:2},{u:"Calça FX Marrom",q:2},{u:"BOTA PVC COMPOSITE KOP (CA 26092/43168/34554)",q:1},{u:"Moletom Marrom",q:1},{u:"Abafador",q:1},{u:"Balaclava",q:1}],
-  "KOPENHAGEN (ALMOXARIFE - PRODUTO ACABADO)":[{u:"Camiseta FX Marrom",q:2},{u:"Calça FX Marrom",q:2},{u:"BOTA PVC COMPOSITE KOP (CA 26092/43168/34554)",q:1},{u:"Moletom Marrom",q:1}],
-  "KOPENHAGEN (FABRICA)": [{u:"Camiseta FX Branca",q:2},{u:"Calça FX Branca",q:2},{u:"BOTA PVC FÁBRICA KOP (CA 41858/43366)",q:1},{u:"Abafador",q:1},{u:"Balaclava",q:1}],
-  "LUFT":             [{u:"Bota SBF (CA 43377)",q:1},{u:"Colete Refletivo Amarelo",q:2}],
-  "POLISOPRO":        [{u:"Camiseta FX Azul",q:2}],
-  "POLOAR":           [{u:"Camiseta FX Azul",q:3},{u:"Calça FX Azul",q:2},{u:"Bota FX ou SBF",q:1}],
-  "DHL - SERRA":      [{u:"Colete Refletivo",q:1}],
-  "DHL CUIABÁ":       [{u:"Bota",q:1},{u:"Colete Refletivo",q:1},{u:"Luvas",q:1}],
-  "DHL - BRASILIA":   [{u:"Bota",q:1},{u:"Colete Refletivo",q:1},{u:"Luvas",q:1}],
-  "DHL SUZANO":       [{u:"Bota",q:1},{u:"Colete Refletivo",q:1}],
-  "DHL P&G NISSAN":   [{u:"Bota",q:1},{u:"Camiseta Refletiva",q:1},{u:"Colete Refletivo",q:1}],
-  "DHL DOURADOS":     [{u:"Bota",q:1},{u:"Colete Refletivo",q:1},{u:"Luvas",q:1}],
-  "DHL CAMPO GRANDE": [{u:"Bota",q:1},{u:"Colete Refletivo",q:1},{u:"Luvas",q:1}],
-  "OUTRO":            []
+  "ANANDA METAIS LTDA":           [{u:"CAMISETA FX AZUL",q:2},{u:"CALÇA FX AZUL",q:2},{u:"BOTA AÇO FX (CA 17014)",q:1}],
+  "ANANDA":                       [{u:"CAMISETA FX AZUL",q:2},{u:"CALÇA FX AZUL",q:2},{u:"BOTA AÇO FX (CA 17014)",q:1}],
+  "CENTAURO":                     [{u:"CAMISETA FX AZUL",q:2},{u:"CALÇA FX AZUL",q:2},{u:"BOTA PVC SBF (CA 43377)",q:1},{u:"MOLETOM FX",q:1}],
+  "CENTAURO LAPA":                [{u:"CAMISETA FX AZUL",q:2},{u:"CALÇA FX AZUL",q:2},{u:"BOTA PVC SBF (CA 43377)",q:1},{u:"MOLETOM FX",q:1}],
+  "CENTAURO EXTREMA":             [{u:"CAMISETA FX AZUL",q:2},{u:"CALÇA FX AZUL",q:2},{u:"BOTA PVC SBF (CA 43377)",q:1},{u:"MOLETOM FX",q:1}],
+  "CENTAURO JARINU":              [{u:"CAMISETA FX AZUL",q:2},{u:"CALÇA FX AZUL",q:2},{u:"BOTA PVC SBF (CA 43377)",q:1},{u:"MOLETOM FX",q:1}],
+  "CENTAURO ITAJAI":              [{u:"CAMISETA FX AZUL",q:2},{u:"CALÇA FX AZUL",q:2},{u:"BOTA PVC SBF (CA 43377)",q:1},{u:"MOLETOM FX",q:1}],
+  "CENTAURO JOAO PESSOA":         [{u:"CAMISETA FX AZUL",q:2},{u:"CALÇA FX AZUL",q:2},{u:"BOTA PVC SBF (CA 43377)",q:1},{u:"MOLETOM FX",q:1}],
+  "VULCABRAS":                    [{u:"CAMISETA FX AZUL",q:2},{u:"CALÇA FX AZUL",q:2},{u:"BOTA PVC SBF (CA 43377)",q:1}],
+  "VULCABRAS SP":                 [{u:"CAMISETA FX AZUL",q:2},{u:"CALÇA FX AZUL",q:2},{u:"BOTA PVC SBF (CA 43377)",q:1}],
+  "DHL":                          [{u:"BOTA AÇO FX (CA 17014)",q:1},{u:"COLETE AMARELO",q:1}],
+  "DHL CLM KSM":                  [{u:"BOTA AÇO FX (CA 17014)",q:1},{u:"COLETE AMARELO",q:1}],
+  "DHL SANOFI ALCON":             [{u:"BOTA AÇO FX (CA 17014)",q:1},{u:"COLETE AMARELO",q:1}],
+  "DHL CAJAMAR":                  [{u:"CAMISETA FX AZUL",q:2}],
+  "DHL PEPSICO CABREUVA":         [{u:"CAMISETA FX AZUL",q:2}],
+  "DHL ITATIAIA NISSAN":          [{u:"CAMISETA FX AZUL",q:2},{u:"BOTA METATARSO (CA 43959)",q:1}],
+  "DHL GOIANIA":                  [{u:"BOTA PVC SBF (CA 43377)",q:1},{u:"COLETE AMARELO",q:1}],
+  "DHL CAMPO GRANDE":             [{u:"BOTA AÇO FX (CA 17014)",q:1},{u:"COLETE LARANJA",q:2},{u:"LUVA",q:1}],
+  "DHL DOURADOS":                 [{u:"BOTA AÇO FX (CA 17014)",q:1},{u:"COLETE LARANJA",q:2},{u:"LUVA",q:1}],
+  "DHL BRASILIA":                 [{u:"BOTA METATARSO (CA 43959)",q:1},{u:"COLETE AMARELO",q:1},{u:"LUVA",q:1}],
+  "DHL CUIABA":                   [{u:"BOTA AÇO FX (CA 17014)",q:1},{u:"COLETE AMARELO",q:1},{u:"LUVA",q:1}],
+  "DHL RECIFE":                   [{u:"BOTA AÇO FX (CA 17014)",q:1},{u:"COLETE AMARELO",q:1},{u:"LUVA",q:1}],
+  "DHL SERRA":                    [{u:"COLETE AMARELO",q:1}],
+  "DHL SANTOS":                   [{u:"BOTA AÇO FX (CA 17014)",q:1},{u:"COLETE AMARELO",q:1},{u:"LUVA",q:1}],
+  "DHL CRAVINHOS":                [{u:"BOTA AÇO FX (CA 17014)",q:1},{u:"COLETE AMARELO",q:1},{u:"LUVA",q:1}],
+  "DHL PALMAS":                   [{u:"BOTA AÇO FX (CA 17014)",q:1},{u:"COLETE AMARELO",q:1},{u:"LUVA",q:1}],
+  "DHL LIMEIRA":                  [{u:"BOTA AÇO FX (CA 17014)",q:1},{u:"COLETE AMARELO",q:1},{u:"LUVA",q:1}],
+  "DHL ATIBAIA":                  [{u:"BOTA AÇO FX (CA 17014)",q:1},{u:"COLETE AMARELO",q:1},{u:"LUVA",q:1}],
+  "DHL MOGI MIRIM":               [{u:"BOTA AÇO FX (CA 17014)",q:1},{u:"COLETE AMARELO",q:1},{u:"LUVA",q:1}],
+  "DHL CAMPINA GRANDE":           [{u:"BOTA AÇO FX (CA 17014)",q:1},{u:"COLETE AMARELO",q:1}],
+  "DHL SUZANO":                   [{u:"BOTA AÇO FX (CA 17014)",q:1},{u:"COLETE AMARELO",q:1}],
+  "LUFT SOLUTIONS LOGISTICA LTDA":[{u:"BOTA AÇO FX (CA 17014)",q:1},{u:"COLETE AMARELO",q:2}],
+  "LUFT":                         [{u:"BOTA AÇO FX (CA 17014)",q:1},{u:"COLETE AMARELO",q:2}],
+  "ULTRALUB":                     [{u:"CAMISETA FX AZUL",q:2},{u:"CALÇA FX AZUL",q:2},{u:"MOLETOM FX",q:1}],
+  "STE TRANSPORTES":              [{u:"CAMISETA FX AZUL",q:2},{u:"CALÇA FX AZUL",q:2},{u:"BOTA AÇO FX (CA 17014)",q:1}],
+  "FISIA":                        [{u:"CAMISETA FX AZUL",q:2},{u:"CALÇA FX AZUL",q:2},{u:"BOTA PVC SBF (CA 43377)",q:1},{u:"MOLETOM FX",q:1}],
+  "VBLOG":                        [{u:"CAMISETA FX AZUL",q:2},{u:"CALÇA FX AZUL",q:2},{u:"BOTA PVC SBF (CA 43377)",q:1},{u:"MOLETOM FX",q:1}],
+  "EBAZAR MELI":                  [{u:"MOLETOM FX",q:1}],
+  "ASSO":                         [{u:"CAMISETA FX AZUL",q:2},{u:"CALÇA FX AZUL",q:2},{u:"BOTA AÇO FX (CA 17014)",q:1}],
+  "EXCIL":                        [{u:"CAMISETA FX AZUL",q:2},{u:"CALÇA FX AZUL",q:2},{u:"BOTA AÇO FX (CA 17014)",q:1}],
+  "UNIMAGNA":                     [{u:"CAMISETA FX AZUL",q:2},{u:"BOTA AÇO FX (CA 17014)",q:1}],
+  "UNIAR POLOAR":                 [{u:"CAMISETA FX AZUL",q:3},{u:"CALÇA FX AZUL",q:2},{u:"BOTA AÇO FX (CA 17014)",q:1}],
+  "ID DO BRASIL":                 [{u:"CAMISETA FX AZUL",q:2},{u:"CALÇA FX AZUL",q:2},{u:"BOTA AÇO FX (CA 17014)",q:1}],
+  "ID DO BRASIL HM":              [{u:"CAMISETA FX AZUL",q:2},{u:"CALÇA FX AZUL",q:2},{u:"BOTA AÇO FX (CA 17014)",q:1}],
+  "CRM FABRICA":                  [{u:"CAMISETA FX AZUL",q:2},{u:"CALÇA FX AZUL",q:2},{u:"BALACLAVA",q:2},{u:"BOTA AÇO FX (CA 17014)",q:1},{u:"PROTETOR AURICULAR",q:1}],
+  "CRM ALMOXARIFE":               [{u:"CAMISETA FX AZUL",q:2},{u:"CALÇA FX AZUL",q:2},{u:"MOLETOM FX",q:1},{u:"BALACLAVA",q:2},{u:"BOTA AÇO FX (CA 17014)",q:1},{u:"PROTETOR AURICULAR",q:1}],
+  "PERNOD RICARD":                [{u:"CAMISETA FX AZUL",q:2},{u:"CALÇA FX AZUL",q:2},{u:"MOLETOM FX",q:1},{u:"BOTA AÇO FX (CA 17014)",q:1}]
 };
 
 // ============================================================
@@ -1696,10 +1911,337 @@ const TAMS_R=["PP","P","M","G","GG","XG","EXG","ESP."];
 const TAMS_B=["34","35","36","37","38","39","40","41","42","43","44","45","46"];
 const TAMS_U=["ÚNICO"];
 
-let db={entradas:[],saidas:[],devolucoes:[],estoque:{}};
+const PRECO_UNITARIO={
+  "CAMISETA FX AZUL":     {"normal":25,"grande":31.5},
+  "MOLETOM FX":           {"normal":70,"grande":70},
+  "CALÇA FX AZUL":        {"normal":40,"grande":42},
+  "BERMUDA":              {"normal":30,"grande":30},
+  "BALACLAVA":            {"normal":29,"grande":29},
+  "COLETE AMARELO":       {"normal":28,"grande":28},
+  "COLETE LARANJA":       {"normal":28,"grande":28},
+  "LUVA":                 {"normal":13.9,"grande":13.9},
+  "PROTETOR AURICULAR":   {"normal":228.33,"grande":228.33},
+  "BOTA AÇO FX (CA 17014)":      {"normal":59,"grande":59},
+  "BOTA PVC SBF (CA 43377)":     {"normal":72,"grande":72},
+  "BOTA METATARSO (CA 43959)":   {"normal":150,"grande":150},
+  "BOTA PVC":             {"normal":48.89,"grande":48.89},
+  "BOTA PVC DIARISTA FX": {"normal":48.89,"grande":48.89}
+};
+const TAMS_GRANDES=['XG','EXG','G1','G2','G3','G4','G5','G6','G7','G8'];
+// ============================================================
+// TRANSFERÊNCIA ENTRE UNIDADES
+// ============================================================
+let saiMode = 'func';
+
+function setSaiMode(mode){
+  saiMode = mode;
+  const isFuncMode = mode === 'func';
+  // Campos de funcionário
+  ['sai-nome','sai-cpf','sai-tel','sai-uni','sai-cli'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.closest('.fg,.fr2,.fr3') && null; // não esconde o wrapper inteiro
+  });
+  // Mostrar/ocultar blocos
+  const funcBlocks = document.querySelectorAll('#page-saida .sec-lbl, #page-saida .fr2, #page-saida .fr3, #kit-area');
+  const transfArea = document.getElementById('transf-area');
+  const pendArea = document.getElementById('alert-pendente');
+
+  // Esconder/mostrar bloco de dados do funcionário + kit
+  // Usamos um wrapper div
+  const dadosFunc = document.getElementById('dados-func-wrap');
+  if(dadosFunc) dadosFunc.style.display = isFuncMode ? '' : 'none';
+  if(transfArea) transfArea.style.display = isFuncMode ? 'none' : 'block';
+  if(pendArea) pendArea.style.display = isFuncMode ? '' : 'none';
+
+  // Estilo dos tabs
+  const tabFunc = document.getElementById('sai-tab-func');
+  const tabTransf = document.getElementById('sai-tab-transf');
+  if(tabFunc){
+    tabFunc.style.background = isFuncMode ? 'var(--gold)' : 'transparent';
+    tabFunc.style.color = isFuncMode ? '#fff' : 'var(--muted)';
+    tabFunc.style.borderColor = isFuncMode ? 'var(--gold)' : 'var(--border)';
+  }
+  if(tabTransf){
+    tabTransf.style.background = !isFuncMode ? 'var(--blue)' : 'transparent';
+    tabTransf.style.color = !isFuncMode ? '#fff' : 'var(--muted)';
+    tabTransf.style.borderColor = !isFuncMode ? 'var(--blue)' : 'var(--border)';
+  }
+
+  const sub = document.getElementById('sai-subtitulo');
+  if(sub) sub.textContent = isFuncMode
+    ? 'Selecione a empresa — o kit é carregado automaticamente'
+    : 'Mova estoque de uma unidade para outra';
+
+  if(!isFuncMode) buildTransfProdOptions();
+}
+
+function buildTransfProdOptions(){
+  const sel = document.getElementById('transf-prod');
+  if(!sel) return;
+  // Listar produtos únicos que têm estoque
+  const prods = [...new Set(Object.keys(db.estoque).map(k=>k.split('|')[0]))].sort();
+  sel.innerHTML = '<option value="">— Selecione —</option>' +
+    prods.map(p=>`<option>${p}</option>`).join('');
+  document.getElementById('transf-tam').innerHTML = '<option value="">— Selecione —</option>';
+}
+
+function buildTransfTams(){
+  const prod = document.getElementById('transf-prod')?.value;
+  const origem = document.getElementById('transf-origem')?.value;
+  const sel = document.getElementById('transf-tam');
+  if(!sel) return;
+  // Listar tamanhos disponíveis para o produto na origem
+  const tams = Object.entries(db.estoque)
+    .filter(([k,v])=>{
+      const [p,,u] = k.split('|');
+      return p===prod && (origem?u===origem:true) && v>0;
+    })
+    .map(([k,v])=>({tam:k.split('|')[1], qtd:v}));
+  const ordemTam=['PP','P','M','G','GG','XG','EXG','ESP.','ESP. 5',
+    '34','35','36','37','38','39','40','41','42','43','44','45','46','ÚNICO',
+    'G1','G2','G3','G4','G5','G6','G7','G8'];
+  tams.sort((a,b)=>{
+    const ia=ordemTam.indexOf(a.tam); const ib=ordemTam.indexOf(b.tam);
+    return (ia<0?99:ia)-(ib<0?99:ib);
+  });
+  sel.innerHTML = '<option value="">— Selecione —</option>' +
+    tams.map(({tam,qtd})=>`<option value="${tam}">${tam} (${qtd} disponíveis)</option>`).join('');
+  // Atualizar info de estoque
+  atualizarTransfInfo();
+}
+
+function atualizarTransfInfo(){
+  const prod = document.getElementById('transf-prod')?.value;
+  const tam = document.getElementById('transf-tam')?.value;
+  const origem = document.getElementById('transf-origem')?.value;
+  const info = document.getElementById('transf-estoque-info');
+  if(!info) return;
+  if(prod && tam && origem){
+    const key = `${prod}|${tam}|${origem}`;
+    const qtd = db.estoque[key]||0;
+    info.innerHTML = `📦 Estoque atual em <strong>${origem}</strong>: <strong style="color:${qtd<=5?'var(--red)':qtd<=20?'var(--amber)':'var(--green)'}">${qtd} un.</strong>`;
+  } else {
+    info.textContent = '';
+  }
+}
+
+function registrarTransferencia(){
+  const origem = document.getElementById('transf-origem')?.value;
+  const destino = document.getElementById('transf-destino')?.value;
+  const prod = document.getElementById('transf-prod')?.value;
+  const tam = document.getElementById('transf-tam')?.value;
+  const qtd = parseInt(document.getElementById('transf-qtd')?.value)||0;
+  const obs = document.getElementById('transf-obs')?.value.trim()||'';
+
+  if(!origem) return showAlert('alert-sai','⚠ Selecione a unidade de origem.','err');
+  if(!destino) return showAlert('alert-sai','⚠ Selecione a unidade de destino.','err');
+  if(origem===destino) return showAlert('alert-sai','⚠ Origem e destino não podem ser iguais.','err');
+  if(!prod) return showAlert('alert-sai','⚠ Selecione o produto.','err');
+  if(!tam) return showAlert('alert-sai','⚠ Selecione o tamanho.','err');
+  if(qtd<=0) return showAlert('alert-sai','⚠ Informe uma quantidade válida.','err');
+
+  const keyOrig = `${prod}|${tam}|${origem}`;
+  const keyDest = `${prod}|${tam}|${destino}`;
+  const dispOrig = db.estoque[keyOrig]||0;
+
+  if(qtd > dispOrig) return showAlert('alert-sai',`⚠ Estoque insuficiente em ${origem}: apenas ${dispOrig} un. disponíveis.`,'err');
+
+  // Movimentar estoque
+  db.estoque[keyOrig] = dispOrig - qtd;
+  db.estoque[keyDest] = (db.estoque[keyDest]||0) + qtd;
+
+  // Registrar como saída especial tipo transferência
+  const {data,hora} = now();
+  const reg = {
+    id: Date.now(), data, hora, tipo:'transferencia',
+    origem, destino, produto:prod, tamanho:tam, qtd, obs,
+    nome: `Transferência ${origem} → ${destino}`
+  };
+  if(!db.transferencias) db.transferencias = [];
+  db.transferencias.unshift(reg);
+  save();
+  logAtividade('saida', `Transferência: ${qtd}x ${prod} ${tam} de ${origem} → ${destino}`);
+
+  showAlert('alert-sai',`✅ Transferência registrada! ${qtd}x ${prod} ${tam} — ${origem} → ${destino}`,'ok');
+
+  // Limpar
+  ['transf-qtd','transf-obs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('transf-origem').value='';
+  document.getElementById('transf-destino').value='';
+  document.getElementById('transf-estoque-info').textContent='';
+  buildTransfProdOptions();
+  atualizarContadores();
+  renderTransferencias();
+}
+
+function renderTransferencias(){
+  var el=document.getElementById('lista-transf');
+  if(!el) return;
+  var verArqEl=document.getElementById('transf-ver-arq');
+  var verArq=verArqEl?verArqEl.checked:false;
+  var todas=db.transferencias||[];
+  var lista=todas.filter(function(t){return verArq||!t.arquivado;});
+  var isAdmin=sessao&&sessao.perfil==='admin';
+
+  var header='<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;margin-bottom:4px;">'
+    +'<div style="font-size:11px;font-weight:700;color:var(--muted);">TRANSFERENCIAS RECENTES</div>'
+    +'<div style="display:flex;gap:6px;align-items:center;">'
+      +'<label style="font-size:10px;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:3px;">'
+        +'<input type="checkbox" id="transf-ver-arq" '+(verArq?'checked':'')
+        +' onchange="renderTransferencias()"> Ver arquivados ('+todas.filter(function(t){return t.arquivado;}).length+')'
+      +'</label>'
+      +(isAdmin?'<button onclick="exportarTransferenciasExcel()" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;">Excel</button>':'')
+    +'</div>'
+  +'</div>';
+
+  if(!lista.length){
+    el.innerHTML=header+'<div class="empty" style="font-size:11px;padding:8px 0;">Nenhuma transferencia'+(verArq?'':' ativa')+'.</div>';
+    return;
+  }
+
+  // Registrar callbacks globais
+  window._tArq={};
+  window._tDel={};
+  lista.forEach(function(t){
+    window._tArq[t.id]=function(){arquivarTransf(t.id);};
+    window._tDel[t.id]=function(){excluirTransfLocal(t.id);};
+  });
+
+  var rows='';
+  lista.forEach(function(t){
+    var arquivadoHtml=t.arquivado
+      ? '<span style="font-size:10px;color:var(--muted)">Arquivado</span>'
+      : '<button onclick="window._tArq['+t.id+']()" style="background:#EBF7F1;color:#1A6B3C;border:1px solid #A8DFC4;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer;">Arq</button>';
+    var deleteHtml=isAdmin
+      ? '<button onclick="window._tDel['+t.id+']()" style="background:#FEF0EE;color:#C0392B;border:1px solid #F5B8B3;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer;">Del</button>'
+      : '';
+    rows+='<div class="li">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">'
+        +'<div style="flex:1">'
+          +'<div class="li-main">'+t.produto+' - '+t.tamanho+'</div>'
+          +'<div class="li-sub">'+t.origem+' > '+t.destino+' - '+t.data+'</div>'
+          +(t.obs?'<div class="li-sub">'+t.obs+'</div>':'')
+        +'</div>'
+        +'<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">'
+          +'<span style="background:#EBF3FE;color:#1a6bb5;border:1px solid #b3d1f5;border-radius:12px;padding:2px 8px;font-size:10px;font-weight:700;">'+t.qtd+' un.</span>'
+          +arquivadoHtml+deleteHtml
+        +'</div>'
+      +'</div>'
+    +'</div>';
+  });
+  el.innerHTML=header+rows;
+}
+
+function arquivarTransf(id){
+  var t=(db.transferencias||[]).find(function(x){return x.id===id;});
+  if(!t) return;
+  t.arquivado=true;
+  t.dataArquivo=new Date().toLocaleDateString('pt-BR');
+  save();renderTransferencias();
+  toast('📁 Transferência arquivada!');
+}
+
+function exportarTransferenciasExcel(){
+  var verArq=document.getElementById('transf-ver-arq')?.checked||false;
+  var lista=(db.transferencias||[]).filter(function(t){return verArq?true:!t.arquivado;});
+  var header=['Data','Hora','Produto','Tamanho','Origem','Destino','Qtd','Status','Data Arquivo','Obs'];
+  var rows=lista.map(function(t){
+    return [t.data||'',t.hora||'',t.produto||'',t.tamanho||'',t.origem||'',t.destino||'',t.qtd||0,
+      t.arquivado?'Arquivado':'Ativo',t.dataArquivo||'',t.obs||''];
+  });
+  downloadCSV([header].concat(rows),'Transferencias_'+new Date().toLocaleDateString('pt-BR').replace(/[/]/g,'-')+'.csv');
+  toast('Excel baixado!');
+}
+
+function excluirTransfLocal(id){
+  db.transferencias=(db.transferencias||[]).filter(function(t){return t.id!==id;});
+  save();
+  renderTransferencias();
+  toast('Removido!');
+}
+
+function setSaiTipo(tipo){
+  window._saiTipo=tipo;
+  var btnFunc=document.getElementById('sai-tipo-func');
+  var btnPrep=document.getElementById('sai-tipo-prep');
+  if(btnFunc){
+    btnFunc.style.background=tipo==='funcionario'?'var(--gold)':'transparent';
+    btnFunc.style.color=tipo==='funcionario'?'#fff':'var(--muted)';
+    btnFunc.style.borderColor=tipo==='funcionario'?'var(--gold)':'var(--border)';
+  }
+  if(btnPrep){
+    btnPrep.style.background=tipo==='preposto'?'#7C3AED':'transparent';
+    btnPrep.style.color=tipo==='preposto'?'#fff':'var(--muted)';
+    btnPrep.style.borderColor=tipo==='preposto'?'#7C3AED':'var(--border)';
+  }
+  // Ajustar label
+  var label=document.getElementById('sai-nome-label');
+  if(label) label.textContent=tipo==='preposto'?'Nome do preposto':'Nome completo';
+}
+
+function onDestinoChange(){
+  const sel=document.getElementById('ent-destino');
+  const custom=document.getElementById('ent-destino-custom');
+  if(custom)custom.style.display=sel&&sel.value==='outro'?'block':'none';
+}
+function onSaiDestinoChange(){
+  const sel=document.getElementById('sai-destino');
+  const custom=document.getElementById('sai-destino-custom');
+  if(custom)custom.style.display=sel&&sel.value==='outro'?'block':'none';
+}
+function editarEstoque(key){
+  if(!key||!db.estoque.hasOwnProperty(key)) return;
+  var parts=key.split('|');
+  var prod=parts[0],tam=parts[1],uni=parts[2];
+  var atual=db.estoque[key]||0;
+  var novo=prompt('Estoque de '+prod+' '+tam+' ('+uni+')\nAtual: '+atual+'\n\nNova quantidade (ou 0 para zerar):', atual);
+  if(novo===null) return; // cancelou
+  var novoNum=parseInt(novo);
+  if(isNaN(novoNum)||novoNum<0){alert('Valor invalido.');return;}
+  db.estoque[key]=novoNum;
+  save();renderEstoque();
+  toast('Estoque atualizado: '+prod+' '+tam+' = '+novoNum);
+  logAtividade('entrada','Ajuste manual de estoque: '+prod+' '+tam+' ('+uni+'): '+atual+' > '+novoNum);
+}
+
+function getPreco(produto,tamanho){
+  const p=PRECO_UNITARIO[produto];
+  if(!p)return 0;
+  return TAMS_GRANDES.includes(tamanho)?p.grande:p.normal;
+}
+let db={entradas:[],saidas:[],devolucoes:[],estoque:{"BOTA AÇO FX (CA 17014)|35|Bragança Paulista":5,"BOTA AÇO FX (CA 17014)|36|Bragança Paulista":3,"BOTA AÇO FX (CA 17014)|37|Bragança Paulista":4,"BOTA AÇO FX (CA 17014)|38|Bragança Paulista":3,"BOTA AÇO FX (CA 17014)|39|Bragança Paulista":4,"BOTA AÇO FX (CA 17014)|40|Bragança Paulista":4,"BOTA AÇO FX (CA 17014)|41|Bragança Paulista":4,"BOTA AÇO FX (CA 17014)|42|Bragança Paulista":2,"BOTA AÇO FX (CA 17014)|43|Bragança Paulista":3,"BOTA AÇO FX (CA 17014)|44|Bragança Paulista":2,"BOTA AÇO FX (CA 17014)|45|Bragança Paulista":1,"BOTA PVC SBF (CA 43377)|35|Bragança Paulista":2,"BOTA PVC SBF (CA 43377)|36|Bragança Paulista":4,"BOTA PVC SBF (CA 43377)|37|Bragança Paulista":3,"BOTA PVC SBF (CA 43377)|38|Bragança Paulista":1,"BOTA PVC SBF (CA 43377)|39|Bragança Paulista":3,"BOTA PVC SBF (CA 43377)|40|Bragança Paulista":2,"BOTA PVC SBF (CA 43377)|41|Bragança Paulista":6,"BOTA PVC SBF (CA 43377)|42|Bragança Paulista":10,"BOTA PVC SBF (CA 43377)|44|Bragança Paulista":8,"BOTA PVC SBF (CA 43377)|45|Bragança Paulista":8,"CALÇA FX AZUL|PP|Bragança Paulista":5,"CALÇA FX AZUL|P|Bragança Paulista":3,"CALÇA FX AZUL|M|Bragança Paulista":4,"CALÇA FX AZUL|G|Bragança Paulista":3,"CALÇA FX AZUL|GG|Bragança Paulista":21,"CALÇA FX AZUL|G1|Bragança Paulista":16,"CALÇA FX AZUL|G2|Bragança Paulista":60,"CALÇA FX AZUL|G3|Bragança Paulista":4,"CALÇA FX AZUL|EXG|Bragança Paulista":14,"CALÇA FX AZUL|XG|Bragança Paulista":7,"CAMISETA FX AZUL|P|Bragança Paulista":20,"CAMISETA FX AZUL|M|Bragança Paulista":22,"CAMISETA FX AZUL|G|Bragança Paulista":20,"CAMISETA FX AZUL|GG|Bragança Paulista":20,"CAMISETA FX AZUL|XG|Bragança Paulista":10,"CAMISETA FX AZUL|EXG|Bragança Paulista":10,"CAMISETA FX AZUL|ESP.|Bragança Paulista":8,"CAMISETA FX AZUL|ESP. 5|Bragança Paulista":4,"MOLETOM FX|P|Bragança Paulista":8,"MOLETOM FX|M|Bragança Paulista":10,"MOLETOM FX|G|Bragança Paulista":10,"MOLETOM FX|GG|Bragança Paulista":11,"MOLETOM FX|XG|Bragança Paulista":4,"MOLETOM FX|EXG|Bragança Paulista":4,"CAMISETA FX AZUL|P|Extrema":91,"CAMISETA FX AZUL|M|Extrema":86,"CAMISETA FX AZUL|G|Extrema":89,"CAMISETA FX AZUL|GG|Extrema":64,"CAMISETA FX AZUL|XG|Extrema":42,"CAMISETA FX AZUL|EXG|Extrema":24,"CAMISETA FX AZUL|ESP.|Extrema":10,"CAMISETA FX AZUL|G2|Extrema":27,"CAMISETA FX AZUL|G3|Extrema":21,"CAMISETA FX AZUL|G4|Extrema":20,"CALÇA FX AZUL|P|Extrema":47,"CALÇA FX AZUL|M|Extrema":26,"CALÇA FX AZUL|G|Extrema":38,"CALÇA FX AZUL|GG|Extrema":40,"CALÇA FX AZUL|XG|Extrema":15,"CALÇA FX AZUL|EXG|Extrema":35,"CALÇA FX AZUL|ESP.|Extrema":10,"CALÇA FX AZUL|G1|Extrema":2,"CALÇA FX AZUL|G2|Extrema":7,"CALÇA FX AZUL|G3|Extrema":10,"CALÇA FX AZUL|G7|Extrema":6,"CALÇA FX AZUL|G8|Extrema":10,"MOLETOM FX|PP|Extrema":1,"MOLETOM FX|P|Extrema":47,"MOLETOM FX|M|Extrema":42,"MOLETOM FX|G|Extrema":71,"MOLETOM FX|GG|Extrema":58,"MOLETOM FX|XG|Extrema":1,"MOLETOM FX|EXG|Extrema":1,"MOLETOM FX|ESP.|Extrema":3,"MOLETOM FX|G3|Extrema":2,"BOTA PVC SBF (CA 43377)|35|Extrema":10,"BOTA PVC SBF (CA 43377)|36|Extrema":8,"BOTA PVC SBF (CA 43377)|37|Extrema":2,"BOTA PVC SBF (CA 43377)|38|Extrema":1,"BOTA PVC SBF (CA 43377)|39|Extrema":5,"BOTA PVC SBF (CA 43377)|40|Extrema":3,"BOTA PVC SBF (CA 43377)|41|Extrema":10,"BOTA PVC SBF (CA 43377)|42|Extrema":2,"BOTA PVC SBF (CA 43377)|43|Extrema":4,"BOTA PVC SBF (CA 43377)|44|Extrema":7,"BOTA PVC SBF (CA 43377)|45|Extrema":6,"COLETE AMARELO|P|Extrema":1,"COLETE AMARELO|M|Extrema":35,"COLETE AMARELO|G|Extrema":50,"COLETE AMARELO|GG|Extrema":1,"COLETE AMARELO|XG|Extrema":25,"COLETE AMARELO|EXG|Extrema":20,"COLETE LARANJA|M|Extrema":12,"COLETE LARANJA|G|Extrema":50,"COLETE LARANJA|GG|Extrema":4,"COLETE LARANJA|XG|Extrema":1,"BOTA PVC|34|Extrema":2,"BOTA PVC|35|Extrema":1,"BOTA PVC|36|Extrema":1,"BOTA PVC|37|Extrema":1,"BOTA PVC|38|Extrema":3,"BOTA PVC|42|Extrema":3,"BOTA PVC|43|Extrema":2,"BOTA PVC|44|Extrema":5,"BOTA PVC|45|Extrema":1,"BOTA PVC|46|Extrema":4,"BOTA METATARSO (CA 43959)|35|Extrema":1,"BOTA METATARSO (CA 43959)|36|Extrema":2,"BOTA METATARSO (CA 43959)|37|Extrema":5,"BOTA METATARSO (CA 43959)|38|Extrema":3,"BOTA METATARSO (CA 43959)|39|Extrema":1,"BOTA METATARSO (CA 43959)|40|Extrema":2,"BOTA METATARSO (CA 43959)|41|Extrema":6,"BOTA METATARSO (CA 43959)|42|Extrema":1,"BOTA METATARSO (CA 43959)|43|Extrema":2,"BOTA METATARSO (CA 43959)|44|Extrema":1,"BOTA AÇO FX (CA 17014)|35|Extrema":8,"BOTA AÇO FX (CA 17014)|36|Extrema":9,"BOTA AÇO FX (CA 17014)|37|Extrema":15,"BOTA AÇO FX (CA 17014)|38|Extrema":10,"BOTA AÇO FX (CA 17014)|39|Extrema":6,"BOTA AÇO FX (CA 17014)|40|Extrema":8,"BOTA AÇO FX (CA 17014)|41|Extrema":8,"BOTA AÇO FX (CA 17014)|42|Extrema":3,"BOTA AÇO FX (CA 17014)|43|Extrema":6,"BOTA AÇO FX (CA 17014)|44|Extrema":1,"BOTA AÇO FX (CA 17014)|45|Extrema":2,"BOTA AÇO FX (CA 17014)|46|Extrema":2,"BOTA KOPENHAGEN|35|Bragança Paulista":12,"BOTA KOPENHAGEN|36|Bragança Paulista":27,"BOTA KOPENHAGEN|37|Bragança Paulista":15,"BOTA KOPENHAGEN|38|Bragança Paulista":14,"BOTA KOPENHAGEN|39|Bragança Paulista":12,"BOTA KOPENHAGEN|40|Bragança Paulista":14,"BOTA KOPENHAGEN|41|Bragança Paulista":11,"BOTA KOPENHAGEN|42|Bragança Paulista":3,"BOTA KOPENHAGEN|43|Bragança Paulista":13,"BOTA KOPENHAGEN|44|Bragança Paulista":10,"BOTA KOPENHAGEN|45|Bragança Paulista":3,"BOTA KOPENHAGEN|46|Bragança Paulista":1,"CAMISETA KOPENHAGEN|P|Bragança Paulista":11,"CAMISETA KOPENHAGEN|G|Bragança Paulista":17,"CAMISETA KOPENHAGEN|GG|Bragança Paulista":10,"CAMISETA KOPENHAGEN|XG|Bragança Paulista":10,"CAMISETA KOPENHAGEN|ESP.|Bragança Paulista":4,"CALÇA KOPENHAGEN|P|Bragança Paulista":10,"CALÇA KOPENHAGEN|M|Bragança Paulista":10,"CALÇA KOPENHAGEN|G|Bragança Paulista":8,"CALÇA KOPENHAGEN|ESP.|Bragança Paulista":4,"BERMUDA AZUL MARINHO|P|Bragança Paulista":5,"BERMUDA AZUL MARINHO|M|Bragança Paulista":24,"COLETE LARANJA COM LOGO|M|Bragança Paulista":5,"COLETE LARANJA COM LOGO|G|Bragança Paulista":14,"COLETE LARANJA COM LOGO|XG|Bragança Paulista":4,"COLETE LARANJA COM LOGO|GG|Bragança Paulista":8,"COLETE LARANJA COM LOGO|XXG|Bragança Paulista":8,"COLETE LARANJA SEM LOGO|G|Bragança Paulista":20,"COLETE LARANJA SEM LOGO|XG|Bragança Paulista":45,"COLETE AMARELO COM LOGO|G|Bragança Paulista":2,"COLETE AMARELO COM LOGO|XXG|Bragança Paulista":10,"COLETE AMARELO SEM LOGO|M|Bragança Paulista":12,"COLETE AMARELO SEM LOGO|G|Bragança Paulista":3,"COLETE AMARELO SEM LOGO|XG|Bragança Paulista":3,"BOTA PVC DIARISTA FX|35|Bragança Paulista":20,"BOTA PVC DIARISTA FX|36|Bragança Paulista":10,"BOTA PVC DIARISTA FX|37|Bragança Paulista":11,"BOTA PVC DIARISTA FX|40|Bragança Paulista":1,"BOTA PVC DIARISTA FX|43|Bragança Paulista":1,"BOTA PVC DIARISTA FX|44|Bragança Paulista":6,"BOTA PVC DIARISTA FX|45|Bragança Paulista":1,"BOTA PVC DIARISTA FX|46|Bragança Paulista":1,"BOTA PVC DIARISTA FX|34|Extrema":3,"BOTA PVC DIARISTA FX|35|Extrema":2,"BOTA PVC DIARISTA FX|36|Extrema":4,"BOTA PVC DIARISTA FX|37|Extrema":8,"BOTA PVC DIARISTA FX|38|Extrema":6,"BOTA PVC DIARISTA FX|39|Extrema":1,"BOTA PVC DIARISTA FX|44|Extrema":11,"BOTA PVC DIARISTA FX|45|Extrema":1,"BOTA PVC DIARISTA FX|46|Extrema":1,"BOTA PVC DIARISTA FX|49|Extrema":1}};
 let saiTab='todos';
 let signCtx,signCanvas,signing=false;
-try{const d=localStorage.getItem('gfx_v5');if(d)db=JSON.parse(d);}catch(e){}
+try{const d=localStorage.getItem('gfx_v5');if(d){const sv=JSON.parse(d);if(sv.saidas&&sv.saidas.length)db.saidas=sv.saidas;if(sv.transferencias&&sv.transferencias.length)db.transferencias=sv.transferencias;if(sv.lavanderia&&sv.lavanderia.length)db.lavanderia=sv.lavanderia;if(sv.entradas&&sv.entradas.length)db.entradas=sv.entradas;if(sv.devolucoes&&sv.devolucoes.length)db.devolucoes=sv.devolucoes;if(sv.fornecedores)db.fornecedores=sv.fornecedores;if(sv.produtosExtras)db.produtosExtras=sv.produtosExtras;if(sv.empresasCad)db.empresasCad=sv.empresasCad;if(sv.estoqueMin)db.estoqueMin=sv.estoqueMin;if(sv.log)db.log=sv.log;const bp={"BOTA AÇO FX (CA 17014)|35|Bragança Paulista":5,"BOTA AÇO FX (CA 17014)|36|Bragança Paulista":3,"BOTA AÇO FX (CA 17014)|37|Bragança Paulista":4,"BOTA AÇO FX (CA 17014)|38|Bragança Paulista":3,"BOTA AÇO FX (CA 17014)|39|Bragança Paulista":4,"BOTA AÇO FX (CA 17014)|40|Bragança Paulista":4,"BOTA AÇO FX (CA 17014)|41|Bragança Paulista":4,"BOTA AÇO FX (CA 17014)|42|Bragança Paulista":2,"BOTA AÇO FX (CA 17014)|43|Bragança Paulista":3,"BOTA AÇO FX (CA 17014)|44|Bragança Paulista":2,"BOTA AÇO FX (CA 17014)|45|Bragança Paulista":1,"BOTA PVC SBF (CA 43377)|35|Bragança Paulista":2,"BOTA PVC SBF (CA 43377)|36|Bragança Paulista":4,"BOTA PVC SBF (CA 43377)|37|Bragança Paulista":3,"BOTA PVC SBF (CA 43377)|38|Bragança Paulista":1,"BOTA PVC SBF (CA 43377)|39|Bragança Paulista":3,"BOTA PVC SBF (CA 43377)|40|Bragança Paulista":2,"BOTA PVC SBF (CA 43377)|41|Bragança Paulista":6,"BOTA PVC SBF (CA 43377)|42|Bragança Paulista":10,"BOTA PVC SBF (CA 43377)|44|Bragança Paulista":8,"BOTA PVC SBF (CA 43377)|45|Bragança Paulista":8,"CALÇA FX AZUL|PP|Bragança Paulista":5,"CALÇA FX AZUL|P|Bragança Paulista":3,"CALÇA FX AZUL|M|Bragança Paulista":4,"CALÇA FX AZUL|G|Bragança Paulista":3,"CALÇA FX AZUL|GG|Bragança Paulista":21,"CALÇA FX AZUL|G1|Bragança Paulista":16,"CALÇA FX AZUL|G2|Bragança Paulista":60,"CALÇA FX AZUL|G3|Bragança Paulista":4,"CALÇA FX AZUL|EXG|Bragança Paulista":14,"CALÇA FX AZUL|XG|Bragança Paulista":7,"CAMISETA FX AZUL|P|Bragança Paulista":20,"CAMISETA FX AZUL|M|Bragança Paulista":22,"CAMISETA FX AZUL|G|Bragança Paulista":20,"CAMISETA FX AZUL|GG|Bragança Paulista":20,"CAMISETA FX AZUL|XG|Bragança Paulista":10,"CAMISETA FX AZUL|EXG|Bragança Paulista":10,"CAMISETA FX AZUL|ESP.|Bragança Paulista":8,"CAMISETA FX AZUL|ESP. 5|Bragança Paulista":4,"MOLETOM FX|P|Bragança Paulista":8,"MOLETOM FX|M|Bragança Paulista":10,"MOLETOM FX|G|Bragança Paulista":10,"MOLETOM FX|GG|Bragança Paulista":11,"MOLETOM FX|XG|Bragança Paulista":4,"MOLETOM FX|EXG|Bragança Paulista":4,"CAMISETA FX AZUL|P|Extrema":91,"CAMISETA FX AZUL|M|Extrema":86,"CAMISETA FX AZUL|G|Extrema":89,"CAMISETA FX AZUL|GG|Extrema":64,"CAMISETA FX AZUL|XG|Extrema":42,"CAMISETA FX AZUL|EXG|Extrema":24,"CAMISETA FX AZUL|ESP.|Extrema":10,"CAMISETA FX AZUL|G2|Extrema":27,"CAMISETA FX AZUL|G3|Extrema":21,"CAMISETA FX AZUL|G4|Extrema":20,"CALÇA FX AZUL|P|Extrema":47,"CALÇA FX AZUL|M|Extrema":26,"CALÇA FX AZUL|G|Extrema":38,"CALÇA FX AZUL|GG|Extrema":40,"CALÇA FX AZUL|XG|Extrema":15,"CALÇA FX AZUL|EXG|Extrema":35,"CALÇA FX AZUL|ESP.|Extrema":10,"CALÇA FX AZUL|G1|Extrema":2,"CALÇA FX AZUL|G2|Extrema":7,"CALÇA FX AZUL|G3|Extrema":10,"CALÇA FX AZUL|G7|Extrema":6,"CALÇA FX AZUL|G8|Extrema":10,"MOLETOM FX|PP|Extrema":1,"MOLETOM FX|P|Extrema":47,"MOLETOM FX|M|Extrema":42,"MOLETOM FX|G|Extrema":71,"MOLETOM FX|GG|Extrema":58,"MOLETOM FX|XG|Extrema":1,"MOLETOM FX|EXG|Extrema":1,"MOLETOM FX|ESP.|Extrema":3,"MOLETOM FX|G3|Extrema":2,"BOTA PVC SBF (CA 43377)|35|Extrema":10,"BOTA PVC SBF (CA 43377)|36|Extrema":8,"BOTA PVC SBF (CA 43377)|37|Extrema":2,"BOTA PVC SBF (CA 43377)|38|Extrema":1,"BOTA PVC SBF (CA 43377)|39|Extrema":5,"BOTA PVC SBF (CA 43377)|40|Extrema":3,"BOTA PVC SBF (CA 43377)|41|Extrema":10,"BOTA PVC SBF (CA 43377)|42|Extrema":2,"BOTA PVC SBF (CA 43377)|43|Extrema":4,"BOTA PVC SBF (CA 43377)|44|Extrema":7,"BOTA PVC SBF (CA 43377)|45|Extrema":6,"COLETE AMARELO|P|Extrema":1,"COLETE AMARELO|M|Extrema":35,"COLETE AMARELO|G|Extrema":50,"COLETE AMARELO|GG|Extrema":1,"COLETE AMARELO|XG|Extrema":25,"COLETE AMARELO|EXG|Extrema":20,"COLETE LARANJA|M|Extrema":12,"COLETE LARANJA|G|Extrema":50,"COLETE LARANJA|GG|Extrema":4,"COLETE LARANJA|XG|Extrema":1,"BOTA PVC|34|Extrema":2,"BOTA PVC|35|Extrema":1,"BOTA PVC|36|Extrema":1,"BOTA PVC|37|Extrema":1,"BOTA PVC|38|Extrema":3,"BOTA PVC|42|Extrema":3,"BOTA PVC|43|Extrema":2,"BOTA PVC|44|Extrema":5,"BOTA PVC|45|Extrema":1,"BOTA PVC|46|Extrema":4,"BOTA METATARSO (CA 43959)|35|Extrema":1,"BOTA METATARSO (CA 43959)|36|Extrema":2,"BOTA METATARSO (CA 43959)|37|Extrema":5,"BOTA METATARSO (CA 43959)|38|Extrema":3,"BOTA METATARSO (CA 43959)|39|Extrema":1,"BOTA METATARSO (CA 43959)|40|Extrema":2,"BOTA METATARSO (CA 43959)|41|Extrema":6,"BOTA METATARSO (CA 43959)|42|Extrema":1,"BOTA METATARSO (CA 43959)|43|Extrema":2,"BOTA METATARSO (CA 43959)|44|Extrema":1,"BOTA AÇO FX (CA 17014)|35|Extrema":8,"BOTA AÇO FX (CA 17014)|36|Extrema":9,"BOTA AÇO FX (CA 17014)|37|Extrema":15,"BOTA AÇO FX (CA 17014)|38|Extrema":10,"BOTA AÇO FX (CA 17014)|39|Extrema":6,"BOTA AÇO FX (CA 17014)|40|Extrema":8,"BOTA AÇO FX (CA 17014)|41|Extrema":8,"BOTA AÇO FX (CA 17014)|42|Extrema":3,"BOTA AÇO FX (CA 17014)|43|Extrema":6,"BOTA AÇO FX (CA 17014)|44|Extrema":1,"BOTA AÇO FX (CA 17014)|45|Extrema":2,"BOTA AÇO FX (CA 17014)|46|Extrema":2,"BOTA KOPENHAGEN|35|Bragança Paulista":12,"BOTA KOPENHAGEN|36|Bragança Paulista":27,"BOTA KOPENHAGEN|37|Bragança Paulista":15,"BOTA KOPENHAGEN|38|Bragança Paulista":14,"BOTA KOPENHAGEN|39|Bragança Paulista":12,"BOTA KOPENHAGEN|40|Bragança Paulista":14,"BOTA KOPENHAGEN|41|Bragança Paulista":11,"BOTA KOPENHAGEN|42|Bragança Paulista":3,"BOTA KOPENHAGEN|43|Bragança Paulista":13,"BOTA KOPENHAGEN|44|Bragança Paulista":10,"BOTA KOPENHAGEN|45|Bragança Paulista":3,"BOTA KOPENHAGEN|46|Bragança Paulista":1,"CAMISETA KOPENHAGEN|P|Bragança Paulista":11,"CAMISETA KOPENHAGEN|G|Bragança Paulista":17,"CAMISETA KOPENHAGEN|GG|Bragança Paulista":10,"CAMISETA KOPENHAGEN|XG|Bragança Paulista":10,"CAMISETA KOPENHAGEN|ESP.|Bragança Paulista":4,"CALÇA KOPENHAGEN|P|Bragança Paulista":10,"CALÇA KOPENHAGEN|M|Bragança Paulista":10,"CALÇA KOPENHAGEN|G|Bragança Paulista":8,"CALÇA KOPENHAGEN|ESP.|Bragança Paulista":4,"BERMUDA AZUL MARINHO|P|Bragança Paulista":5,"BERMUDA AZUL MARINHO|M|Bragança Paulista":24,"COLETE LARANJA COM LOGO|M|Bragança Paulista":5,"COLETE LARANJA COM LOGO|G|Bragança Paulista":14,"COLETE LARANJA COM LOGO|XG|Bragança Paulista":4,"COLETE LARANJA COM LOGO|GG|Bragança Paulista":8,"COLETE LARANJA COM LOGO|XXG|Bragança Paulista":8,"COLETE LARANJA SEM LOGO|G|Bragança Paulista":20,"COLETE LARANJA SEM LOGO|XG|Bragança Paulista":45,"COLETE AMARELO COM LOGO|G|Bragança Paulista":2,"COLETE AMARELO COM LOGO|XXG|Bragança Paulista":10,"COLETE AMARELO SEM LOGO|M|Bragança Paulista":12,"COLETE AMARELO SEM LOGO|G|Bragança Paulista":3,"COLETE AMARELO SEM LOGO|XG|Bragança Paulista":3,"BOTA PVC DIARISTA FX|35|Bragança Paulista":20,"BOTA PVC DIARISTA FX|36|Bragança Paulista":10,"BOTA PVC DIARISTA FX|37|Bragança Paulista":11,"BOTA PVC DIARISTA FX|40|Bragança Paulista":1,"BOTA PVC DIARISTA FX|43|Bragança Paulista":1,"BOTA PVC DIARISTA FX|44|Bragança Paulista":6,"BOTA PVC DIARISTA FX|45|Bragança Paulista":1,"BOTA PVC DIARISTA FX|46|Bragança Paulista":1,"BOTA PVC DIARISTA FX|34|Extrema":3,"BOTA PVC DIARISTA FX|35|Extrema":2,"BOTA PVC DIARISTA FX|36|Extrema":4,"BOTA PVC DIARISTA FX|37|Extrema":8,"BOTA PVC DIARISTA FX|38|Extrema":6,"BOTA PVC DIARISTA FX|39|Extrema":1,"BOTA PVC DIARISTA FX|44|Extrema":11,"BOTA PVC DIARISTA FX|45|Extrema":1,"BOTA PVC DIARISTA FX|46|Extrema":1,"BOTA PVC DIARISTA FX|49|Extrema":1,"CALÇA BRANCA|PP|Extrema":5,"CALÇA BRANCA|P|Extrema":50,"CALÇA BRANCA|M|Extrema":27,"CALÇA BRANCA|G|Extrema":46,"CALÇA BRANCA|GG|Extrema":52,"CALÇA BRANCA|XG|Extrema":21,"CALÇA BRANCA|EXG|Extrema":21,"CALÇA BRANCA|ESP.|Extrema":10,"CAMISETA BRANCA|P|Extrema":54,"CAMISETA BRANCA|M|Extrema":68,"CAMISETA BRANCA|G|Extrema":65,"CAMISETA BRANCA|GG|Extrema":76,"CAMISETA BRANCA|XG|Extrema":36,"CAMISETA BRANCA|EXG|Extrema":28,"CAMISETA BRANCA|ESP.|Extrema":21,"CAMISETA BRANCA|ESP.3|Extrema":1,"BALACLAVA|ÚNICO|Extrema":99,"ABAFADOR|ÚNICO|Extrema":50,"MOLETOM BEGE|P|Extrema":14,"MOLETOM BEGE|M|Extrema":5,"MOLETOM BEGE|G|Extrema":21,"MOLETOM BEGE|GG|Extrema":24,"MOLETOM BEGE|XG|Extrema":22,"MOLETOM BEGE|EXG|Extrema":13,"CALÇA BEGE|PP|Extrema":1,"CALÇA BEGE|P|Extrema":35,"CALÇA BEGE|M|Extrema":22,"CALÇA BEGE|G|Extrema":16,"CALÇA BEGE|GG|Extrema":51,"CALÇA BEGE|XG|Extrema":26,"CALÇA BEGE|EXG|Extrema":26,"CALÇA BEGE|ESP.|Extrema":7,"CALÇA BEGE|ESP.2|Extrema":5,"CAMISETA BEGE|PP|Extrema":1,"CAMISETA BEGE|P|Extrema":38,"CAMISETA BEGE|M|Extrema":15,"CAMISETA BEGE|G|Extrema":10,"CAMISETA BEGE|GG|Extrema":32,"CAMISETA BEGE|XG|Extrema":15,"CAMISETA BEGE|EXG|Extrema":1,"CAMISETA BEGE|ESP.|Extrema":15,"BOTA PVC SBF (CA 43377)|35|Guarulhos":3,"BOTA PVC SBF (CA 43377)|36|Guarulhos":3,"BOTA PVC SBF (CA 43377)|37|Guarulhos":3,"BOTA PVC SBF (CA 43377)|38|Guarulhos":3,"BOTA PVC SBF (CA 43377)|39|Guarulhos":3,"BOTA PVC SBF (CA 43377)|40|Guarulhos":3,"BOTA PVC SBF (CA 43377)|41|Guarulhos":3,"BOTA PVC SBF (CA 43377)|42|Guarulhos":3,"BOTA PVC SBF (CA 43377)|43|Guarulhos":3,"BOTA PVC SBF (CA 43377)|44|Guarulhos":3,"BOTA KOPENHAGEN PRODUCAO|35|Extrema":11,"BOTA KOPENHAGEN PRODUCAO|36|Extrema":2,"BOTA KOPENHAGEN PRODUCAO|37|Extrema":15,"BOTA KOPENHAGEN PRODUCAO|38|Extrema":7,"BOTA KOPENHAGEN PRODUCAO|39|Extrema":8,"BOTA KOPENHAGEN PRODUCAO|40|Extrema":13,"BOTA KOPENHAGEN PRODUCAO|41|Extrema":15,"BOTA KOPENHAGEN PRODUCAO|42|Extrema":8,"BOTA KOPENHAGEN PRODUCAO|43|Extrema":15,"BOTA KOPENHAGEN PRODUCAO|44|Extrema":2,"BOTA KOPENHAGEN PRODUCAO|45|Extrema":10,"BOTA KOPENHAGEN PRODUCAO|46|Extrema":1,"BOTA MERCADO LIVRE|34|Extrema":1,"BOTA MERCADO LIVRE|35|Extrema":2,"BOTA MERCADO LIVRE|36|Extrema":7,"BOTA MERCADO LIVRE|37|Extrema":8,"BOTA MERCADO LIVRE|38|Extrema":5,"BOTA MERCADO LIVRE|39|Extrema":8,"BOTA MERCADO LIVRE|40|Extrema":2,"BOTA MERCADO LIVRE|41|Extrema":2,"BOTA MERCADO LIVRE|42|Extrema":8,"BOTA MERCADO LIVRE|43|Extrema":1,"BOTA MERCADO LIVRE|44|Extrema":1,"BOTA MERCADO LIVRE|45|Extrema":1,"BOTA MERCADO LIVRE|47|Extrema":2,"BERMUDA|P|Extrema":136,"BERMUDA|M|Extrema":148,"BERMUDA|G|Extrema":147,"BERMUDA|GG|Extrema":89,"BERMUDA|XG|Extrema":74,"BERMUDA|EXG|Extrema":53,"BERMUDA|ESP.|Extrema":2};const se=sv.estoque||{};Object.entries(se).forEach(([k,v])=>{const u=k.split('|')[2];if(u!=='Bragança Paulista'&&u!=='Extrema')db.estoque[k]=v;});Object.assign(db.estoque,bp);}}
+catch(e){}
+
+// Migração: rodar APÓS localStorage carregado
+(function migrarDevolucoesParaLavanderia(){
+  if(!db.lavanderia) db.lavanderia=[];
+  (db.devolucoes||[]).forEach(function(dev){
+    var jaTemNaFila=db.lavanderia.some(function(x){return x.devId===dev.id;});
+    if(jaTemNaFila) return;
+    var itensParaLav=[];
+    if(dev.itens&&dev.itens.length){
+      dev.itens.forEach(function(item){
+        if(!item.qtd||item.qtd<=0) return;
+        var tams=item.tamanhos&&item.tamanhos.length?item.tamanhos:['-'];
+        tams.forEach(function(tam){
+          itensParaLav.push({id:Date.now()+Math.random(),data:dev.data,hora:dev.hora,devId:dev.id,funcionario:dev.nome,unidade:dev.unidade,produto:item.produto,tamanho:tam,qtd:item.qtd,status:'aguardando'});
+        });
+      });
+    }
+    if(dev.camiseta&&dev.camiseta.qtd>0) itensParaLav.push({id:Date.now()+Math.random(),data:dev.data,hora:dev.hora,devId:dev.id,funcionario:dev.nome,unidade:dev.unidade,produto:'Camiseta FX',tamanho:dev.camiseta.tam||'-',qtd:dev.camiseta.qtd,status:'aguardando'});
+    if(dev.calca&&dev.calca.qtd>0) itensParaLav.push({id:Date.now()+Math.random(),data:dev.data,hora:dev.hora,devId:dev.id,funcionario:dev.nome,unidade:dev.unidade,produto:'Calça FX',tamanho:dev.calca.tam||'-',qtd:dev.calca.qtd,status:'aguardando'});
+    if(dev.bota&&dev.bota.qtd>0) itensParaLav.push({id:Date.now()+Math.random(),data:dev.data,hora:dev.hora,devId:dev.id,funcionario:dev.nome,unidade:dev.unidade,produto:'Bota',tamanho:dev.bota.num||'-',qtd:dev.bota.qtd,status:'aguardando'});
+    if(dev.moletom>0) itensParaLav.push({id:Date.now()+Math.random(),data:dev.data,hora:dev.hora,devId:dev.id,funcionario:dev.nome,unidade:dev.unidade,produto:'Moletom FX',tamanho:'-',qtd:dev.moletom,status:'aguardando'});
+    if(dev.colete>0) itensParaLav.push({id:Date.now()+Math.random(),data:dev.data,hora:dev.hora,devId:dev.id,funcionario:dev.nome,unidade:dev.unidade,produto:'Colete',tamanho:'-',qtd:dev.colete,status:'aguardando'});
+    if(itensParaLav.length===0&&dev.nome) itensParaLav.push({id:Date.now()+Math.random(),data:dev.data,hora:dev.hora,devId:dev.id,funcionario:dev.nome,unidade:dev.unidade,produto:'(itens não especificados)',tamanho:'-',qtd:1,status:'aguardando'});
+    itensParaLav.forEach(function(x){db.lavanderia.push(x);});
+  });
+  if(db.lavanderia.length>0) try{localStorage.setItem('gfx_v5',JSON.stringify(db));}catch(e){}
+})();
+
 function save(){try{localStorage.setItem('gfx_v5',JSON.stringify(db));}catch(e){}}
 function isBota(u){return u.toLowerCase().includes('bota');}
 function isUnico(u){return u.includes('Balaclava')||u.includes('Protetor')||u.includes('Colete');}
@@ -1715,17 +2257,19 @@ function go(p){
   document.querySelectorAll('.sb-item').forEach(x=>{if(x.getAttribute('onclick')?.includes("'"+p+"'"))x.classList.add('on');});
   window.scrollTo(0,0);
   if(p==='dashboard')renderDash();
-  if(p==='saida')renderSaidas();
+  if(p==='saida'){renderSaidas();renderTransferencias();}
   if(p==='entrada'){setTimeout(()=>{buildProdOptions('ent-prod');buildFornOptions('ent-forn');},50);renderEntradas();}
   if(p==='historico')renderHistorico();
   if(p==='pendentes')renderPendentes();
-  if(p==='estoque')renderEstoque();
+  if(p==='estoque'){var uni2=getUnidade();var s=document.getElementById('est-subtitulo');if(s)s.textContent=uni2==='Todas'?'Todas as unidades':uni2;renderEstoque();}
   if(p==='cadastros'){renderCadastros();buildProdOptions('ent-prod');buildFornOptions('ent-forn');}
   if(p==='adm-empresas'){renderEmpresasCad();}
   if(p==='adm-estoque-min'){renderEstoqueMin();}
   if(p==='adm-grafico'){setTimeout(renderGrafico,100);}
   if(p==='adm-log'){renderLog();}
   if(p==='adm-senhas'){}
+
+  if(p==='adm-relatorio'){renderRelatorio();}
   if(p==='adm-backup'){var bs=(db.saidas||[]).length,be=(db.entradas||[]).length,bd=(db.devolucoes||[]).length,best=Object.keys(db.estoque||{}).filter(function(k){return (db.estoque||{})[k]>0;}).length;[['bk-saidas',bs],['bk-entradas',be],['bk-devs',bd],['bk-estoque',best]].forEach(function(x){var el=document.getElementById(x[0]);if(el)el.textContent=x[1];});}
   if(p==='devolucao'){renderDevs();}
   if(p==='consulta'){document.getElementById('busca').value='';document.getElementById('busca-res').innerHTML='<div class="empty">Digite para buscar...</div>';}
@@ -1735,15 +2279,36 @@ function go(p){
   atualizarContadores();
 }
 
-function selUnit(el){document.querySelectorAll('.tb-u').forEach(x=>x.classList.remove('on'));el.classList.add('on');}
+function getUnidade(){return document.querySelector('.tb-u.on')?.textContent.trim().replace('📊 ','').trim()||'Bragança Paulista';}
+function selUnit(el){
+  document.querySelectorAll('.tb-u').forEach(x=>x.classList.remove('on'));
+  el.classList.add('on');
+  // Re-renderiza a página ativa ao trocar de unidade
+  var ativas=['dashboard','estoque','saida','entrada','devolucao','historico','pendentes','alertas'];
+  ativas.forEach(function(p){
+    var pg=document.getElementById('page-'+p);
+    if(pg&&pg.classList.contains('on')) go(p);
+  });
+}
 
 function atualizarContadores(){
   const parc=db.saidas.filter(s=>s.status==='Parcial').length;
   const devs=db.devolucoes.length;
   document.getElementById('cnt-parc').textContent=parc;
   document.getElementById('cnt-dev').textContent=devs;
-  const crit=Object.entries(db.estoque).filter(([,v])=>v>0&&v<=5).length;
-  document.getElementById('cnt-alert').textContent=crit||'—';
+  const _lim=parseInt(document.getElementById('alert-limite')?.value)||5;
+  const _uni=document.getElementById('alert-filtro-uni')?.value||'';
+  const _min=db.estoqueMin||{};
+  const crit=Object.entries(db.estoque).filter(([k,v])=>{
+    if(v<=0) return false;
+    const[p,,u]=k.split('|');
+    if(_uni&&u!==_uni) return false;
+    const minEsp=_min[p+'|'+u]||_min[p]||null;
+    return minEsp!==null?v<=minEsp:v<=_lim;
+  }).length;
+  document.getElementById('cnt-alert').textContent=crit||'-';
+  // Contador lavanderia
+
 }
 
 // ============================================================
@@ -1794,11 +2359,13 @@ function registrarSaida(status){
     return{produto:item.u,tamanhos:sels,qtd,kitQtd:item.q};
   }).filter(i=>i.tamanhos.length>0||i.qtd>0);
   const {data,hora}=now();
-  const saida={id:Date.now(),data,hora,tipo:'saida',nome,cpf:document.getElementById('sai-cpf').value.trim(),contato:document.getElementById('sai-tel').value.trim(),unidade:uni,cliente:cli,itens,obs:document.getElementById('sai-obs').value.trim(),status};
+  const saiDest=document.getElementById('sai-destino')?.value==='outro'?(document.getElementById('sai-destino-custom')?.value.trim()||''):(document.getElementById('sai-destino')?.value||'');
+  const saiTipo=window._saiTipo||'funcionario';
+  const saida={id:Date.now(),data,hora,tipo:'saida',tipoEntrega:saiTipo,operador:(sessao&&sessao.nome)||'',nome,cpf:document.getElementById('sai-cpf').value.trim(),contato:document.getElementById('sai-tel').value.trim(),unidade:uni,cliente:cli,itens,obs:document.getElementById('sai-obs').value.trim(),status,destino:saiDest};
   db.saidas.unshift(saida);save();sbSalvarSaida(saida).catch(function(){});sbSalvarEstoque().catch(function(){});
   logAtividade('saida','Saída '+status+' para '+nome+' ('+cli+')');
   showAlert('alert-sai',`${status==='Completo'?'🟢':'🟠'} Saída ${status} registrada com sucesso! <button onclick="abrirComp(${saida.id})" style="background:var(--blue);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-left:8px">🖨️ Comprovante</button>`,'ok');
-  ['sai-nome','sai-cpf','sai-tel','sai-obs'].forEach(id=>document.getElementById(id).value='');
+  ['sai-nome','sai-cpf','sai-tel','sai-obs','sai-destino','sai-destino-custom'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('sai-destino-custom').style.display='none';setSaiTipo('funcionario');
   document.getElementById('sai-uni').value='';document.getElementById('sai-cli').value='';document.getElementById('kit-area').style.display='none';
   renderSaidas();atualizarContadores();
 }
@@ -1812,8 +2379,14 @@ function filtrarSaidas(f,btn){
 
 function renderSaidas(){
   const el=document.getElementById('lista-saidas');
-  const lista=saiTab==='todos'?db.saidas:db.saidas.filter(s=>s.status===saiTab);
-  if(!lista.length){el.innerHTML='<div class="empty">Nenhuma saída encontrada.</div>';return;}
+  const filtroUni=document.getElementById('sai-filtro-uni')?.value||'';
+  const filtroDest=document.getElementById('sai-filtro-dest')?.value||'';
+  let lista=saiTab==='todos'?db.saidas:db.saidas.filter(s=>s.status===saiTab);
+  if(filtroUni) lista=lista.filter(s=>s.unidade===filtroUni);
+  if(filtroDest==='__local__') lista=lista.filter(s=>!s.destino);
+  else if(filtroDest) lista=lista.filter(s=>s.destino===filtroDest);
+  const total=lista.length;
+  if(!total){el.innerHTML='<div class="empty">Nenhuma saída encontrada.</div>';return;}
   el.innerHTML=lista.map(s=>`
     <div class="li">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
@@ -1821,14 +2394,19 @@ function renderSaidas(){
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <span class="li-main">${s.nome}</span>
             <span class="badge ${s.status==='Completo'?'b-green':'b-amber'}">${s.status==='Completo'?'🟢':'🟠'} ${s.status}</span>
+            ${s.tipoEntrega==='preposto'?'<span style="background:#F3E8FF;color:#6B21A8;border:1px solid #D8B4FE;border-radius:12px;padding:2px 8px;font-size:10px;font-weight:700;">🏢 Preposto</span>':''}
           </div>
-          <div class="li-sub">${s.cliente} · ${s.unidade} · ${s.data} ${s.hora}</div>
+          <div class="li-sub">${s.cliente} · ${s.unidade} · ${s.data} ${s.hora}${sessao&&sessao.perfil==='admin'&&s.operador?` · <span style="font-size:10px;color:var(--blue);font-weight:600;">👤 ${s.operador}</span>`:''}</div>
+          ${s.destino?`<div style="margin-top:2px;"><span style="background:#FEF3E2;color:#92400E;border:1px solid #FCD5A0;border-radius:12px;padding:2px 8px;font-size:10px;font-weight:700;">📍 Destino: ${s.destino}</span></div>`:''}
           <div style="margin-top:4px">${s.itens?.map(i=>`<span class="tag">${i.produto}${i.tamanhos?.length?` (${i.tamanhos.join(', ')})`:''} ×${i.qtd}</span>`).join('')||''}</div>
           ${s.obs?`<div class="li-sub" style="font-style:italic;margin-top:3px">${s.obs}</div>`:''}
+          ${s.obsCompleto?`<div style="margin-top:3px;"><span style="background:#EBF7F1;color:#1A6B3C;border:1px solid #A8DFC4;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:600;">✅ ${s.dataCompleto||''} — ${s.obsCompleto}</span></div>`:''}
         </div>
-        <div style="display:flex;gap:6px;flex-shrink:0;margin-left:8px;">
+        <div style="display:flex;gap:6px;flex-shrink:0;margin-left:8px;flex-wrap:wrap;justify-content:flex-end;">
+        ${s.status==='Parcial'?`<button onclick="event.stopPropagation();marcarParcialCompleto(${s.id})" style="background:var(--green);color:#fff;border:none;border-radius:var(--r);padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;">✅ Completo</button>`:''}
         <button onclick="event.stopPropagation();abrirDetalhe('saida',${s.id})" style="background:var(--surface);color:var(--ink);border:1px solid var(--border);border-radius:var(--r);padding:5px 10px;font-size:10px;font-weight:600;cursor:pointer;">🔍 Ver</button>
         <button onclick="event.stopPropagation();abrirComp(${s.id})" style="background:var(--blue);color:#fff;border:none;border-radius:var(--r);padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;">🖨️</button>
+        ${sessao&&sessao.perfil==='admin'?`<button onclick="event.stopPropagation();excluirSaida(${s.id},event)" style="background:#FEF0EE;color:#C0392B;border:1px solid #F5B8B3;border-radius:var(--r);padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;" title="Excluir">🗑️</button>`:''}
       </div>
       </div>
     </div>`).join('');
@@ -1886,14 +2464,16 @@ function registrarEntrada(){
   const arqEl=document.getElementById('ent-arquivo');
   const nf=nfEl?nfEl.value.trim():'';
   const arqNome=arqEl&&arqEl.files&&arqEl.files.length>0?arqEl.files[0].name:'';
+  // Se fornecedor for LAVANDERIA, marcar retorno na fila
+  if(forn==='LAVANDERIA'||forn==='LAVANDERIA CLEAN') marcarRetornoLavanderia(prod,tam,uni,qtd);
   db.entradas.unshift({id:Date.now(),tipo:'entrada',data,hora,produto:prod,tamanho:tam,qtd,unidade:uni,
     fornecedor:forn,custo,total:+(custo*qtd).toFixed(2),
     nf,arquivo:arqNome,
-    obs:document.getElementById('ent-obs')?document.getElementById('ent-obs').value.trim():''});
+    obs:document.getElementById('ent-obs')?document.getElementById('ent-obs').value.trim():'',operador:(sessao&&sessao.nome)||'',destino:(document.getElementById('ent-destino')?.value==='outro'?(document.getElementById('ent-destino-custom')?.value.trim()||''):(document.getElementById('ent-destino')?.value||''))});
   save();
   const msgOk=`✅ Entrada registrada! ${prod} — ${tam} — ${qtd} un. (${forn})`;
   showAlert('alert-ent',msgOk,'ok');
-  ['ent-qtd','ent-custo','ent-obs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['ent-qtd','ent-custo','ent-obs','ent-destino','ent-destino-custom'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});{const dc=document.getElementById('ent-destino-custom');if(dc)dc.style.display='none';}
   if(nfEl)nfEl.value='';
   if(arqEl)arqEl.value='';
   const nomeEl=document.getElementById('ent-arquivo-nome');
@@ -1903,13 +2483,20 @@ function registrarEntrada(){
 
 function renderEntradas(){
   const el=document.getElementById('lista-entradas');
-  if(!db.entradas.length){el.innerHTML='<div class="empty">Nenhuma entrada registrada ainda.</div>';return;}
-  el.innerHTML=db.entradas.slice(0,30).map(e=>`
+  const filtroUni=document.getElementById('ent-filtro-uni')?.value||'';
+  const filtroDest=document.getElementById('ent-filtro-dest')?.value||'';
+  let lista=db.entradas;
+  if(filtroUni) lista=lista.filter(e=>e.unidade===filtroUni);
+  if(filtroDest==='__local__') lista=lista.filter(e=>!e.destino);
+  else if(filtroDest) lista=lista.filter(e=>e.destino===filtroDest);
+  if(!lista.length){el.innerHTML='<div class="empty">Nenhuma entrada encontrada.</div>';return;}
+  el.innerHTML=lista.slice(0,50).map(e=>`
     <div class="li">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div style="flex:1">
           <div class="li-main">${e.produto} — ${e.tamanho}</div>
-          <div class="li-sub">${e.fornecedor||'—'} · ${e.unidade} · ${e.data} ${e.hora}</div>
+          <div class="li-sub">${e.fornecedor||'-'} · ${e.unidade} · ${e.data} ${e.hora}${sessao&&sessao.perfil==='admin'&&e.operador?` · <span style="font-size:10px;color:var(--blue);font-weight:600;">👤 ${e.operador}</span>`:''}</div>
+          ${e.destino?`<div style="margin-top:2px;"><span style="background:#FEF3E2;color:#92400E;border:1px solid #FCD5A0;border-radius:12px;padding:2px 8px;font-size:10px;font-weight:700;">📍 Destino: ${e.destino}</span></div>`:''}
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px;">
             ${e.nf?`<span class="tag">NF: ${e.nf}</span>`:''}
             ${e.arquivo?`<span class="tag">📎 ${e.arquivo}</span>`:''}
@@ -1917,7 +2504,10 @@ function renderEntradas(){
             ${e.obs?`<span class="tag">${e.obs}</span>`:''}
           </div>
         </div>
-        <span class="badge b-green" style="flex-shrink:0">+${e.qtd} un.</span>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+          <span class="badge b-green">+${e.qtd} un.</span>
+          ${sessao&&sessao.perfil==='admin'?`<button onclick="excluirEntrada(${e.id},event)" style="background:#FEF0EE;color:#C0392B;border:1px solid #F5B8B3;border-radius:8px;padding:4px 9px;font-size:10px;font-weight:700;cursor:pointer;" title="Excluir">🗑️</button>`:''}
+        </div>
       </div>
     </div>`).join('');
 }
@@ -1939,8 +2529,7 @@ function registrarDevolucao(status){
     const sels=[...document.querySelectorAll(`#devtams-${idx} .tam-btn.sel`)].map(b=>b.dataset.tam);
     const qtd=parseInt(document.getElementById('devqtd-'+idx)?.value)||0;
     if(qtd>0){
-      // Devolver ao estoque
-      if(sels.length>0){const key=`${item.u}|${sels[0]}|${uni}`;db.estoque[key]=(db.estoque[key]||0)+qtd;}
+      // NÃO devolve ao estoque — vai para lavanderia
     }
     return{produto:item.u,tamanhos:sels,qtd,kitQtd:item.q};
   }).filter(i=>i.qtd>0);
@@ -1953,8 +2542,31 @@ function registrarDevolucao(status){
     chave:document.getElementById('dv-chave')?.checked||false,
     refeitorio:document.getElementById('dv-refeit')?.checked||false,
     obs:document.getElementById('dev-obs').value.trim(),
-    status
+    status,
+    lavanderia:'aguardando',operador:(sessao&&sessao.nome)||''  // peças vão para lavanderia, não ao estoque
   };
+  // Registrar itens na fila de lavanderia
+  if(!db.lavanderia) db.lavanderia=[];
+
+// migração movida para após localStorage
+  itens.forEach(function(item){
+    if(!item.qtd||item.qtd<=0) return;
+    // Se tiver múltiplos tamanhos, criar um item por tamanho
+    var tams=item.tamanhos&&item.tamanhos.length?item.tamanhos:['-'];
+    tams.forEach(function(tam){
+      db.lavanderia.push({
+        id:Date.now()+Math.random(),
+        data,hora,
+        devId:dev.id,
+        funcionario:nome,
+        unidade:uni,
+        produto:item.produto,
+        tamanho:tam,
+        qtd:item.qtd,
+        status:'aguardando'
+      });
+    });
+  });
   db.devolucoes.unshift(dev);save();
   logAtividade('devolucao','Devolução '+status+' de '+nome+' ('+cli+')');
   showAlert('alert-dev',`${status==='Completo'?'🟢':'🟠'} Devolução ${status} registrada com sucesso!`,'ok');
@@ -1974,30 +2586,112 @@ function filtrarDevs(f,btn){
   renderDevs();
 }
 
+function parseDateBR(str){
+  if(!str) return null;
+  var p=str.split('/');
+  if(p.length===3) return new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0]));
+  return null;
+}
+function filtrarPeriodo(devs){
+  var f=document.getElementById('dev-filtro-periodo')?document.getElementById('dev-filtro-periodo').value:'';
+  if(!f) return devs;
+  var hoje=new Date(); hoje.setHours(0,0,0,0);
+  var semana=new Date(hoje); semana.setDate(hoje.getDate()-hoje.getDay());
+  var mesIni=new Date(hoje.getFullYear(),hoje.getMonth(),1);
+  var mesAntIni=new Date(hoje.getFullYear(),hoje.getMonth()-1,1);
+  var mesAntFim=new Date(hoje.getFullYear(),hoje.getMonth(),0);
+  return devs.filter(function(d){
+    var dt=parseDateBR(d.data);
+    if(!dt) return true;
+    if(f==='hoje') return dt>=hoje;
+    if(f==='semana') return dt>=semana;
+    if(f==='mes') return dt>=mesIni;
+    if(f==='mes_anterior') return dt>=mesAntIni&&dt<=mesAntFim;
+    return true;
+  });
+}
+
+function renderDevsTotais(){
+  // Calcular totais consolidados de todas as devoluções
+  var grupos={};
+  (db.devolucoes||[]).forEach(function(dev){
+    if(dev.itens&&dev.itens.length){
+      dev.itens.forEach(function(item){
+        if(!item.qtd||item.qtd<=0) return;
+        grupos[item.produto]=(grupos[item.produto]||0)+item.qtd;
+      });
+    }
+  });
+  var el=document.getElementById('dev-totais-lista');
+  if(!el) return;
+  var keys=Object.keys(grupos);
+  if(!keys.length){el.innerHTML='<span style="font-size:11px;color:var(--muted)">Nenhuma devolução com itens registrada ainda.</span>';return;}
+  el.innerHTML=keys.map(function(k){
+    var v=grupos[k];
+    return '<div style="background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 16px;text-align:center;min-width:80px;">'+
+      '<div style="font-size:22px;font-weight:800;color:var(--ink)">'+v+'</div>'+
+      '<div style="font-size:10px;color:var(--muted);font-weight:600;margin-top:2px">'+k+'</div>'+
+    '</div>';
+  }).join('');
+}
+
 function renderDevs(){
+  renderDevsTotais();
   const el=document.getElementById('lista-dev');
-  if(!db.devolucoes.length){el.innerHTML='<div class="empty">Nenhuma devolução registrada ainda.</div>';return;}
-  el.innerHTML=db.devolucoes.slice(0,20).map(d=>`
-    <div class="li">
+  const filtroLav=document.getElementById('dev-filtro-status-lav')?document.getElementById('dev-filtro-status-lav').value:'';
+  let lista=db.devolucoes.filter(d=>saiTab==='todos'||d.status===saiTab);
+  lista=filtrarPeriodo(lista);
+  if(filtroLav==='aguardando') lista=lista.filter(d=>!d.statusLav||d.statusLav==='aguardando');
+  else if(filtroLav==='enviado') lista=lista.filter(d=>d.statusLav==='enviado');
+  else if(filtroLav==='arquivado') lista=lista.filter(d=>d.statusLav==='arquivado');
+  if(!lista.length){el.innerHTML='<div class="empty">Nenhuma devolução encontrada.</div>';return;}
+  el.innerHTML=lista.slice(0,50).map(d=>{
+    // Montar tags dos itens — suporta formato novo (d.itens) e legado
+    let tagItens='';
+    if(d.itens&&d.itens.length){
+      tagItens=d.itens.map(i=>`<span class="tag">🧺 ${i.produto}${i.tamanhos?.length?' '+i.tamanhos.join('/'):''}  ×${i.qtd}</span>`).join('');
+    } else {
+      // formato legado
+      if(d.camiseta?.qtd>0) tagItens+=`<span class="tag">Camiseta ×${d.camiseta.qtd}</span>`;
+      if(d.calca?.qtd>0)    tagItens+=`<span class="tag">Calça ×${d.calca.qtd}</span>`;
+      if(d.bota?.qtd>0)     tagItens+=`<span class="tag">Bota ×${d.bota.qtd}</span>`;
+      if(d.moletom>0)       tagItens+=`<span class="tag">Moletom ×${d.moletom}</span>`;
+      if(d.colete>0)        tagItens+=`<span class="tag">Colete ×${d.colete}</span>`;
+    }
+    // Itens patrimoniais
+    let tagPatr='';
+    if(d.cracha) tagPatr+=`<span class="tag" style="background:#EBF3FE;color:#1a6bb5;">Crachá ✓</span>`;
+    if(d.chave)  tagPatr+=`<span class="tag" style="background:#EBF3FE;color:#1a6bb5;">Chave ✓</span>`;
+    if(d.refeitorio) tagPatr+=`<span class="tag" style="background:#EBF3FE;color:#1a6bb5;">Refeitório ✓</span>`;
+    // Status lavanderia — botões de ação
+    const sLav=d.statusLav||'aguardando';
+    const lavBadge=sLav==='aguardando'?
+      `<button onclick="event.stopPropagation();devMarcarLav(${d.id},'enviado')" style="background:#FEF6E8;color:#92400E;border:1px solid #FCD5A0;border-radius:12px;padding:2px 10px;font-size:10px;font-weight:700;cursor:pointer;">🧺 Aguardando lavanderia retirar</button>`:
+      sLav==='enviado'?
+      `<span style="background:#EBF3FE;color:#1a6bb5;border:1px solid #b3d1f5;border-radius:12px;padding:2px 10px;font-size:10px;font-weight:700;">🚚 Na lavanderia</span>
+       <button onclick="event.stopPropagation();devMarcarLav(${d.id},'aguardando')" style="background:transparent;color:var(--muted);border:none;font-size:10px;cursor:pointer;text-decoration:underline;">desfazer</button>`:
+      sLav==='arquivado'?
+      `<span style="background:#EBF7F1;color:#1A6B3C;border:1px solid #A8DFC4;border-radius:12px;padding:2px 10px;font-size:10px;font-weight:700;">📁 Arquivado</span>`:'';
+    return `<div class="li">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div><div style="display:flex;align-items:center;gap:8px">
-          <span class="li-main">${d.nome}</span>
-          <span class="badge ${d.status==='Completo'?'b-green':'b-amber'}">${d.status==='Completo'?'🟢':'🟠'} ${d.status}</span>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span class="li-main">${d.nome}</span>
+            <span class="badge ${d.status==='Completo'?'b-green':'b-amber'}">${d.status==='Completo'?'🟢':'🟠'} ${d.status}</span>
+            ${lavBadge}
+          </div>
+          <div class="li-sub">${d.empresa||'-'} · ${d.unidade} · ${d.data} ${d.hora}${sessao&&sessao.perfil==='admin'&&d.operador?` · <span style="font-size:10px;color:var(--blue);font-weight:600;">👤 ${d.operador}</span>`:''}</div>
+          <div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px;">${tagItens}${tagPatr}</div>
+          ${d.obs?`<div class="li-sub" style="font-style:italic;margin-top:3px">${d.obs}</div>`:''}
         </div>
-        <div class="li-sub">${d.empresa||'—'} · ${d.unidade} · ${d.data} ${d.hora}</div>
-        <div style="margin-top:4px">
-          ${d.camiseta?.qtd>0?`<span class="tag">Camiseta ${d.camiseta.tipo} ${d.camiseta.tam} ×${d.camiseta.qtd}</span>`:''}
-          ${d.calca?.qtd>0?`<span class="tag">Calça ${d.calca.tipo} ${d.calca.tam} ×${d.calca.qtd}</span>`:''}
-          ${d.bota?.qtd>0?`<span class="tag">Bota ${d.bota.tipo} Nº${d.bota.num} ×${d.bota.qtd}</span>`:''}
-          ${d.moletom>0?`<span class="tag">Moletom ×${d.moletom}</span>`:''}
-          ${d.colete>0?`<span class="tag">Colete ×${d.colete}</span>`:''}
-          ${d.cracha?`<span class="tag">Crachá ✓</span>`:''}
-          ${d.chave?`<span class="tag">Chave ✓</span>`:''}
-          ${d.refeitorio?`<span class="tag">Refeitório ✓</span>`:''}
-        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;margin-left:8px;">
+          <button onclick="event.stopPropagation();abrirDetalhe('devolucao',${d.id})" style="background:var(--surface);color:var(--ink);border:1px solid var(--border);border-radius:var(--r);padding:5px 10px;font-size:10px;font-weight:600;cursor:pointer;">🔍 Ver</button>
+          ${(d.statusLav==='enviado')?`<button onclick="event.stopPropagation();devMarcarLav(${d.id},'arquivado')" style="background:#EBF7F1;color:#1A6B3C;border:1px solid #A8DFC4;border-radius:var(--r);padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;" title="Arquivar após retorno">📁 Arquivar</button>`:''}
+          ${sessao&&sessao.perfil==='admin'?`<button onclick="event.stopPropagation();excluirDevolucao(${d.id},event)" style="background:#FEF0EE;color:#C0392B;border:1px solid #F5B8B3;border-radius:var(--r);padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;" title="Excluir">🗑️</button>`:''}
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ============================================================
@@ -2005,7 +2699,7 @@ function renderDevs(){
 // ============================================================
 function renderDash(){
   const hoje=new Date().toLocaleDateString('pt-BR');
-  document.getElementById('dash-data').textContent=`${document.querySelector('.tb-u.on')?.textContent||'—'} · ${hoje}`;
+  var uni=getUnidade();document.getElementById('dash-data').textContent=uni+' · '+hoje;
   const saiHoje=db.saidas.filter(s=>s.data===hoje).length;
   const parc=db.saidas.filter(s=>s.status==='Parcial').length;
   const totalEst=Object.values(db.estoque).reduce((a,v)=>a+v,0);
@@ -2013,6 +2707,46 @@ function renderDash(){
   document.getElementById('d-tot').textContent=db.saidas.length;
   document.getElementById('d-parc').textContent=parc;
   document.getElementById('d-est').textContent=totalEst;
+  // ---- Cards financeiros (admin) ----
+  const fmt=v=>'R$ '+v.toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+  // Total investido = soma de custo*qtd de todas as entradas
+  const totalGasto=db.entradas.reduce((s,e)=>{
+    const qtd=e.itens?e.itens.reduce((a,i)=>a+(i.qtd||0),0):(e.qtd||0);
+    return s+(e.custo||0)*qtd;
+  },0);
+  // Valor em estoque = preço tabela (fallback) ou custo médio
+  let valorEst=0;
+  const rows=[];
+  Object.entries(db.estoque).forEach(([k,v])=>{
+    if(v<=0)return;
+    const[p,t,u]=k.split('|');
+    const custs=db.entradas.filter(e=>e.produto===p&&e.tamanho===t&&e.unidade===u&&(e.custo||0)>0);
+    const unitCusto=custs.length?custs.reduce((a,b)=>a+(b.custo||0),0)/custs.length:getPreco(p,t);
+    valorEst+=unitCusto*v;
+    rows.push({p,t,u,v,unitCusto,total:unitCusto*v});
+  });
+  rows.sort((a,b)=>b.total-a.total);
+  // Custo médio por saída
+  const custoMedio=db.saidas.length&&totalGasto?totalGasto/db.saidas.length:0;
+  // Atualizar DOM (se existir)
+  const el_tg=document.getElementById('d-total-gasto');
+  const el_ve=document.getElementById('d-valor-estoque');
+  const el_cm=document.getElementById('d-custo-medio');
+  const el_vt=document.getElementById('d-val-table');
+  const el_vd=document.getElementById('d-val-data');
+  if(el_tg)el_tg.textContent=fmt(totalGasto);
+  if(el_ve)el_ve.textContent=fmt(valorEst);
+  if(el_cm)el_cm.textContent=fmt(custoMedio);
+  if(el_vd)el_vd.textContent='('+new Date().toLocaleDateString('pt-BR')+')';
+  if(el_vt){
+    el_vt.innerHTML=rows.slice(0,20).map(r=>`<tr>
+      <td class="td-name">${r.p}</td><td>${r.t}</td>
+      <td style="font-size:10px;color:var(--muted)">${r.u}</td>
+      <td style="text-align:right">${r.v}</td>
+      <td style="text-align:right;color:var(--muted);font-size:11px">${fmt(r.unitCusto)}</td>
+      <td style="text-align:right;font-weight:700;color:var(--green)">${fmt(r.total)}</td>
+    </tr>`).join('');
+  }
   document.getElementById('dash-parc-cnt').textContent=parc;
   document.getElementById('dash-parc-items').textContent=parc?db.saidas.filter(s=>s.status==='Parcial').slice(0,3).map(s=>s.nome).join(' · '):'Nenhuma pendência ✅';
   const crit=Object.entries(db.estoque).filter(([,v])=>v>0&&v<=5);
@@ -2060,7 +2794,8 @@ function renderHistorico(){
             <span class="li-main">${m.tp==='entrada'?m.produto:m.nome}</span>
             ${m.status?`<span class="badge ${m.status==='Completo'?'b-green':'b-amber'}">${m.status}</span>`:''}
           </div>
-          <div class="li-sub">${m.tp==='entrada'?m.unidade:(m.cliente||m.empresa||'—')+' · '+m.unidade} · ${m.data} ${m.hora}</div>
+          <div class="li-sub">${m.tp==='entrada'?m.unidade:(m.cliente||m.empresa||'-')+' · '+m.unidade} · ${m.data} ${m.hora}</div>
+          ${m.destino?`<span style="background:#FEF3E2;color:#92400E;border:1px solid #FCD5A0;border-radius:12px;padding:2px 8px;font-size:10px;font-weight:700;margin-top:2px;display:inline-block;">📍 ${m.destino}</span>`:''}
         </div>
         <span style="font-size:18px;color:var(--border2);margin-left:10px;">›</span>
       </div>
@@ -2074,20 +2809,75 @@ function renderPendentes(){
   const el=document.getElementById('pend-lista');
   const pend=db.saidas.filter(s=>s.status==='Parcial');
   if(!pend.length){el.innerHTML='<div class="empty">✅ Nenhuma entrega parcial em aberto!</div>';return;}
-  el.innerHTML=pend.map(s=>{
-    const d=diasAtraso(s.data);
-    return`<div class="li"><div style="display:flex;justify-content:space-between;align-items:flex-start">
-      <div style="flex:1">
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <span class="li-main">${s.nome}</span>
-          <span class="atraso-badge">${d} dia${d!==1?'s':''} em aberto</span>
-        </div>
-        <div class="li-sub">${s.cliente} · ${s.unidade} · ${s.data}</div>
-        <div class="li-sub">${s.cpf?`CPF: ${s.cpf}`:''} ${s.contato?`· ${s.contato}`:''}</div>
-        <div style="margin-top:4px">${s.itens?.map(i=>`<span class="tag">${i.produto}${i.tamanhos?.length?` (${i.tamanhos.join(', ')})`:''}</span>`).join('')||''}</div>
-      </div>
-      <button onclick="abrirComp(${s.id})" style="background:var(--amber);color:#fff;border:none;border-radius:var(--r);padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;margin-left:8px">🖨️</button>
-    </div></div>`;}).join('');
+  // Registrar callbacks
+  window._pendComp={};window._pendDel={};window._pendPrint={};
+  pend.forEach(function(s){
+    window._pendComp[s.id]=function(){marcarParcialCompleto(s.id);};
+    window._pendDel[s.id]=function(ev){excluirSaida(s.id,ev);};
+    window._pendPrint[s.id]=function(){abrirComp(s.id);};
+  });
+
+  el.innerHTML=pend.map(function(s){
+    var d=diasAtraso(s.data);
+    var itensHtml=(s.itens||[]).map(function(i){
+      return '<span class="tag">'+i.produto+(i.tamanhos&&i.tamanhos.length?' ('+i.tamanhos.join(', ')+')':'')+'</span>';
+    }).join('');
+    var isAdm=sessao&&sessao.perfil==='admin';
+    return '<div class="li"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">'
+      +'<div style="flex:1">'
+        +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
+          +'<span class="li-main">'+s.nome+'</span>'
+          +'<span class="atraso-badge">'+d+' dia'+(d!==1?'s':'')+' em aberto</span>'
+          +'<span style="background:#FEF6E8;color:#92400E;border:1px solid #FCD5A0;border-radius:12px;padding:2px 8px;font-size:10px;font-weight:700;">🟠 Parcial</span>'
+        +'</div>'
+        +'<div class="li-sub">'+s.cliente+' · '+s.unidade+' · '+s.data+'</div>'
+        +'<div class="li-sub">'+(s.cpf?'CPF: '+s.cpf:'')+' '+(s.contato?'· '+s.contato:'')+'</div>'
+        +'<div style="margin-top:4px">'+itensHtml+'</div>'
+      +'</div>'
+      +'<div style="display:flex;gap:4px;flex-shrink:0;align-items:center;">'
+        +'<button onclick="window._pendComp['+s.id+']()" style="background:var(--green);color:#fff;border:none;border-radius:var(--r);padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;" title="Marcar como Completo">✅ Completo</button>'
+        +'<button onclick="window._pendPrint['+s.id+']()" style="background:var(--amber);color:#fff;border:none;border-radius:var(--r);padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;" title="Imprimir">🖨️</button>'
+        +(isAdm?'<button onclick="window._pendDel['+s.id+'](event)" style="background:#FEF0EE;color:#C0392B;border:1px solid #F5B8B3;border-radius:var(--r);padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;" title="Excluir">🗑️</button>':'')
+      +'</div>'
+    +'</div></div>';
+  }).join('');
+}
+
+function marcarParcialCompleto(id){
+  var s=(db.saidas||[]).find(function(x){return x.id===id;});
+  if(!s) return;
+
+  // Criar modal de confirmação com campos de data e obs
+  var hoje=new Date().toLocaleDateString('pt-BR');
+  var modalHtml='<div id="modal-completo" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;">'
+    +'<div style="background:#fff;border-radius:12px;padding:24px;width:90%;max-width:460px;box-shadow:0 8px 32px rgba(0,0,0,.2);">'
+      +'<div style="font-weight:700;font-size:15px;margin-bottom:4px;">✅ Marcar como Completo</div>'
+      +'<div style="font-size:12px;color:#888;margin-bottom:16px;">'+s.nome+' — '+s.cliente+'</div>'
+      +'<label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px;">Data de entrega</label>'
+      +'<input id="mc-data" type="text" value="'+hoje+'" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:13px;margin-bottom:12px;box-sizing:border-box;">'
+      +'<label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px;">Itens entregues / Observação</label>'
+      +'<textarea id="mc-obs" rows="3" placeholder="Ex: Entregue calça G e camiseta M que estavam faltando..." style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:13px;resize:none;box-sizing:border-box;margin-bottom:16px;"></textarea>'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end;">'
+        +'<button onclick="document.getElementById(&quot;modal-completo&quot;).remove()" style="padding:8px 16px;border:1px solid #ddd;background:#fff;border-radius:8px;cursor:pointer;font-size:13px;">Cancelar</button>'
+        +'<button onclick="confirmarCompleto('+id+')" style="padding:8px 16px;background:#1A6B3C;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;">✅ Confirmar</button>'
+      +'</div>'
+    +'</div>'
+  +'</div>';
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function confirmarCompleto(id){
+  var s=(db.saidas||[]).find(function(x){return x.id===id;});
+  if(!s) return;
+  var dataEntrega=document.getElementById('mc-data')?.value||new Date().toLocaleDateString('pt-BR');
+  var obsCompleto=document.getElementById('mc-obs')?.value.trim()||'';
+  document.getElementById('modal-completo')?.remove();
+  s.status='Completo';
+  s.dataCompleto=dataEntrega;
+  if(obsCompleto) s.obsCompleto=obsCompleto;
+  save();renderPendentes();renderSaidas();atualizarContadores();
+  toast('✅ Marcado como Completo!');
+  logAtividade('saida','Parcial concluído: '+s.nome+' — '+obsCompleto);
 }
 
 // ============================================================
@@ -2095,19 +2885,137 @@ function renderPendentes(){
 // ============================================================
 function renderEstoque(){
   const busca=(document.getElementById('est-busca')?.value||'').toLowerCase();
+  const uniFiltro=getUnidade(); // unidade selecionada no topo
+  const verTodas=(document.getElementById('est-ver-todas')?.checked)||false;
   const el=document.getElementById('est-lista');
+  const elHead=document.getElementById('est-thead');
+
+  // Filtrar itens com estoque > 0
   let items=Object.entries(db.estoque).filter(([,v])=>v>0);
-  if(busca)items=items.filter(([k])=>k.toLowerCase().includes(busca));
-  items.sort((a,b)=>a[0].localeCompare(b[0]));
-  if(!items.length){el.innerHTML=`<tr><td colspan="4"><div class="empty">Nenhum item no estoque.</div></td></tr>`;return;}
-  el.innerHTML=items.map(([k,v])=>{const[p,t,u]=k.split('|');return`<tr><td class="td-name">${p}</td><td>${t}</td><td style="font-size:10px;color:var(--muted)">${u}</td><td style="text-align:right;font-weight:700;color:${v<=5?'var(--red)':v<=20?'var(--amber)':'var(--green)'}">${v}</td></tr>`;}).join('');
+  const modoTodas = uniFiltro==='Todas' || verTodas;
+  // Filtrar por unidade (a menos que seja modo Todas)
+  if(!modoTodas) items=items.filter(([k])=>k.split('|')[2]===uniFiltro);
+  // Filtrar por busca
+  if(busca) items=items.filter(([k])=>k.toLowerCase().includes(busca));
+
+  if(!items.length){
+    el.innerHTML=`<tr><td colspan="5"><div class="empty">Nenhum item em estoque${modoTodas?'':' em '+uniFiltro}.</div></td></tr>`;
+    return;
+  }
+
+  // Agrupar por produto
+  const grupos={};
+  items.forEach(([k,v])=>{
+    const [p,t,u]=k.split('|');
+    if(!grupos[p]) grupos[p]={tamanhos:{},total:0,unidades:{}};
+    grupos[p].tamanhos[t]=(grupos[p].tamanhos[t]||0)+v;
+    grupos[p].total+=v;
+    grupos[p].unidades[u]=(grupos[p].unidades[u]||0)+v;
+  });
+
+  // Ordenar tamanhos
+  const ordemTam=['PP','P','M','G','GG','XG','EXG','ESP.','ESP. 5',
+    '34','35','36','37','38','39','40','41','42','43','44','45','46','ÚNICO'];
+
+  let html='';
+  Object.entries(grupos).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([prod,info])=>{
+    const tams=Object.entries(info.tamanhos).sort((a,b)=>{
+      const ia=ordemTam.indexOf(a[0]); const ib=ordemTam.indexOf(b[0]);
+      return (ia<0?99:ia)-(ib<0?99:ib);
+    });
+    const totalCor=info.total<=5?'var(--red)':info.total<=20?'var(--amber)':'var(--green)';
+    // Linha do produto (cabeçalho do grupo)
+    html+=`<tr style="background:var(--surface);border-top:2px solid var(--border2);">
+      <td class="td-name" style="font-size:12px;padding:9px 10px;" colspan="2">${prod}</td>
+      <td style="font-size:10px;color:var(--muted);padding:9px 10px;">
+        ${modoTodas?Object.entries(info.unidades).map(([u,q])=>`<span style="margin-right:6px;">${u.split(' ')[0]}: <strong>${q}</strong></span>`).join(''):''}
+      </td>
+      <td style="text-align:right;padding:9px 10px;">
+        <span style="font-size:14px;font-weight:800;color:${totalCor};">${info.total}</span>
+        <span style="font-size:9px;color:var(--muted);margin-left:3px;">total</span>
+      </td>
+      <td style="width:28px;padding:9px 6px;"></td>
+    </tr>`;
+    // Linha de tamanhos
+    html+=`<tr>
+      <td colspan="5" style="padding:6px 10px 10px 22px;background:#fafaf8;">
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${tams.map(([t,v])=>{
+            const cor=v<=5?'#C0392B':v<=20?'#A05C00':'#1A6B3C';
+            const bg=v<=5?'#FEF0EE':v<=20?'#FEF6E8':'#EBF7F1';
+            const border=v<=5?'#F5B8B3':v<=20?'#FAD9A0':'#A8DFC4';
+            var isAdm=sessao&&sessao.perfil==='admin';
+            var keyEst=prod+'|'+t+'|'+(modoTodas?(Object.keys(db.estoque).filter(function(k){return k.indexOf(prod+'|'+t+'|')===0;})[0]||'').split('|')[2]:uniFiltro);
+            window._estKeys=window._estKeys||{};
+            var eid='ek_'+Object.keys(window._estKeys).length;
+            window._estKeys[eid]=keyEst;
+            return '<div style="display:flex;flex-direction:column;align-items:center;background:'+bg+';border:1px solid '+border+';border-radius:8px;padding:6px 10px;min-width:44px;" '+(isAdm?'data-eid="'+eid+'" class="est-card-adm"':'')+'>'+
+              '<span style="font-size:10px;font-weight:700;color:'+cor+';">'+v+'</span>'+
+              '<span style="font-size:9px;color:#888;margin-top:1px;">'+t+'</span>'+
+              (isAdm?'<span style="font-size:8px;color:#ccc;">✏️</span>':'')+
+            '</div>';
+          }).join('')}
+        </div>
+      </td>
+    </tr>`;
+  });
+
+  el.innerHTML=html;
+  // Listener para editar estoque (admin)
+  if(sessao&&sessao.perfil==='admin'){
+    el.addEventListener('click',function(ev){
+      var card=ev.target.closest('.est-card-adm');
+      if(!card) return;
+      var eid=card.getAttribute('data-eid');
+      var key=window._estKeys&&window._estKeys[eid];
+      if(key) editarEstoque(key);
+    },{once:true});
+  }
 }
 
+function getLimite(){return parseInt(document.getElementById('alert-limite')?.value)||5;}
 function renderAlertas(){
   const el=document.getElementById('alertas-body');
-  const crit=Object.entries(db.estoque).filter(([,v])=>v>0&&v<=20).sort((a,b)=>a[1]-b[1]);
-  if(!crit.length){el.innerHTML=`<tr><td colspan="5"><div class="empty">Nenhum alerta ativo. ✅</div></td></tr>`;return;}
-  el.innerHTML=crit.map(([k,v])=>{const[p,t,u]=k.split('|');return`<tr><td class="td-name">${p}</td><td>${t}</td><td style="font-size:10px">${u}</td><td style="font-weight:700;color:${v<=5?'var(--red)':'var(--amber)'}">${v}</td><td><span class="badge ${v<=5?'b-red':'b-amber'}">${v<=5?'Crítico':'Atenção'}</span></td></tr>`;}).join('');
+  const filtroUni=document.getElementById('alert-filtro-uni')?.value||'';
+  const limite=getLimite();
+  const min=db.estoqueMin||{};
+
+  // Filtrar itens abaixo do mínimo configurado ou do limite geral
+  let crit=Object.entries(db.estoque).filter(([k,v])=>{
+    if(v<=0) return false;
+    const[p,t,u]=k.split('|');
+    if(filtroUni && u!==filtroUni) return false;
+    // Verificar mínimo específico do produto (cadastrado em Estoque Mínimo)
+    const keyMin=p+'|'+u;
+    const minEsp=min[keyMin]||min[p]||null;
+    if(minEsp!==null) return v<=minEsp;
+    return v<=limite;
+  }).sort((a,b)=>a[1]-b[1]);
+
+  // Atualizar contador no badge
+  document.getElementById('cnt-alert').textContent=crit.length||'-';
+
+  if(!crit.length){
+    el.innerHTML='<tr><td colspan="6"><div class="empty">Nenhum alerta'+(filtroUni?' em '+filtroUni:'')+'. ✅</div></td></tr>';
+    return;
+  }
+  el.innerHTML=crit.map(([k,v])=>{
+    const[p,t,u]=k.split('|');
+    const min2=db.estoqueMin||{};
+    const minEsp=min2[p+'|'+u]||min2[p]||limite;
+    const pct=Math.round(v/minEsp*100);
+    const cor=v<=Math.ceil(minEsp*0.3)?'var(--red)':v<=Math.ceil(minEsp*0.6)?'var(--amber)':'var(--blue)';
+    const label=v<=Math.ceil(minEsp*0.3)?'Crítico':v<=Math.ceil(minEsp*0.6)?'Atenção':'Baixo';
+    const badgeCls=v<=Math.ceil(minEsp*0.3)?'b-red':v<=Math.ceil(minEsp*0.6)?'b-amber':'b-blue';
+    return '<tr>'+
+      '<td class="td-name">'+p+'</td>'+
+      '<td>'+t+'</td>'+
+      '<td style="font-size:10px">'+u+'</td>'+
+      '<td style="font-weight:700;color:'+cor+'">'+v+'</td>'+
+      '<td style="font-size:10px;color:var(--muted)">mín: '+minEsp+'</td>'+
+      '<td><span class="badge '+badgeCls+'">'+label+'</span></td>'+
+    '</tr>';
+  }).join('');
 }
 
 // ============================================================
@@ -2126,8 +3034,8 @@ function buscar(){
           <span class="li-main">${s.nome}</span>
           <span class="badge ${s.tipo==='devolucao'?'b-green':s.status==='Completo'?'b-green':'b-amber'}">${s.tipo==='devolucao'?'Devolução':s.status}</span>
         </div>
-        <div class="li-sub">CPF: ${s.cpf||'—'} · ${s.contato||'—'}</div>
-        <div class="li-sub">${s.cliente||s.empresa||'—'} · ${s.unidade} · ${s.data}</div>
+        <div class="li-sub">CPF: ${s.cpf||'-'} · ${s.contato||'-'}</div>
+        <div class="li-sub">${s.cliente||s.empresa||'-'} · ${s.unidade} · ${s.data}</div>
         ${s.itens?`<div style="margin-top:4px">${s.itens.map(i=>`<span class="tag">${i.produto}${i.tamanhos?.length?` (${i.tamanhos.join(', ')})`:''}</span>`).join('')}</div>`:''}
       </div>
       ${s.tipo!=='devolucao'?`<button onclick="abrirComp(${s.id})" style="background:var(--blue);color:#fff;border:none;border-radius:var(--r);padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;margin-left:8px">🖨️</button>`:''}
@@ -2139,14 +3047,14 @@ function buscar(){
 // ============================================================
 function abrirComp(id){
   const s=db.saidas.find(x=>x.id===id);if(!s)return;
-  document.getElementById('comp-data').textContent=`${s.data} às ${s.hora||'—'} — ${s.status}`;
+  document.getElementById('comp-data').textContent=`${s.data} às ${s.hora||'-'} — ${s.status}`;
   document.getElementById('comp-fields').innerHTML=`
     <div class="comp-field"><span style="color:#666;font-weight:600">Funcionário</span><span style="font-weight:700">${s.nome}</span></div>
     <div class="comp-field"><span style="color:#666;font-weight:600">CPF</span><span style="font-weight:700">${s.cpf||'Não informado'}</span></div>
     <div class="comp-field"><span style="color:#666;font-weight:600">Contato</span><span style="font-weight:700">${s.contato||'Não informado'}</span></div>
     <div class="comp-field"><span style="color:#666;font-weight:600">Cliente</span><span style="font-weight:700">${s.cliente}</span></div>
     <div class="comp-field"><span style="color:#666;font-weight:600">Unidade</span><span style="font-weight:700">${s.unidade}</span></div>`;
-  document.getElementById('comp-itens').innerHTML=s.itens?.map(i=>`<div class="comp-field"><span style="color:#666;font-weight:600">${i.produto}</span><span style="font-weight:700">${i.tamanhos?.join(', ')||'—'} × ${i.qtd}</span></div>`).join('')||'';
+  document.getElementById('comp-itens').innerHTML=s.itens?.map(i=>`<div class="comp-field"><span style="color:#666;font-weight:600">${i.produto}</span><span style="font-weight:700">${i.tamanhos?.join(', ')||'-'} × ${i.qtd}</span></div>`).join('')||'';
   document.getElementById('comp-modal').classList.add('on');
   setTimeout(()=>{
     signCanvas=document.getElementById('sign-canvas');
@@ -2172,7 +3080,238 @@ function fecharComp(){document.getElementById('comp-modal').classList.remove('on
 function salvarFornecedor(){
   const nome = document.getElementById('cad-forn-nome').value.trim().toUpperCase();
   if(!nome){showAlert&&showAlert('','Informe o nome.','err');toast('⚠ Informe o nome do fornecedor.');return;}
-  if(!db.fornecedores) db.fornecedores=[];
+  if(!db.fornecedores) db.fornecedores=[];if(!db.transferencias) db.transferencias=[];if(!db.lavanderia) db.lavanderia=[];
+
+function lavMudarAba(btn,aba){
+  window._lavAba=aba;
+  ['aguardando','enviado','descartado'].forEach(function(t){
+    var b=document.getElementById('lav-tab-'+t);
+    if(!b) return;
+    var cor={'aguardando':'var(--amber)','enviado':'var(--blue)','descartado':'#888'}[t];
+    if(t===aba){b.style.background=cor;b.style.color='#fff';b.style.borderColor=cor;}
+    else{b.style.background='transparent';b.style.color='var(--muted)';b.style.borderColor='var(--border)';}
+  });
+  lavRenderizar();
+}
+
+function lavRenderizar(){
+  var aba=window._lavAba||'aguardando';
+  var corpo=document.getElementById('lav-corpo');
+  var totaisEl=document.getElementById('lav-totais');
+  var btnAll=document.getElementById('lav-btn-envio-all');
+  var sub=document.getElementById('lav-sub');
+  if(!corpo) return;
+
+  var devs=(db.devolucoes||[]).filter(function(d){
+    var s=d.statusLav||'aguardando';
+    return s===aba;
+  });
+
+  // Subtítulo
+  var subs={aguardando:'Devoluções aguardando a lavanderia buscar ('+devs.length+')',enviado:'Peças na lavanderia ('+devs.length+')',descartado:'Descartados ('+devs.length+')'};
+  if(sub) sub.textContent=subs[aba]||'';
+
+  // Botão enviar todos
+  if(btnAll) btnAll.style.display=(aba==='aguardando'&&devs.length>0?'block':'none');
+
+  // Totais por produto
+  if(totaisEl){
+    var g={};
+    devs.forEach(function(d){(d.itens||[]).forEach(function(i){if(i.qtd>0)g[i.produto]=(g[i.produto]||0)+i.qtd;});});
+    var ks=Object.keys(g);
+    if(ks.length){
+      var bg=aba==='aguardando'?'#FEF6E8':aba==='enviado'?'#EBF3FE':'#FEF0EE';
+      var bd=aba==='aguardando'?'#FCD5A0':aba==='enviado'?'#b3d1f5':'#F5B8B3';
+      var nc=aba==='aguardando'?'#92400E':aba==='enviado'?'#1a6bb5':'#C0392B';
+      totaisEl.innerHTML=ks.map(function(k){
+        return '<div style="background:'+bg+';border:1.5px solid '+bd+';border-radius:10px;padding:10px 16px;text-align:center;min-width:80px;">'+
+          '<div style="font-size:22px;font-weight:800;color:'+nc+'">'+g[k]+'</div>'+
+          '<div style="font-size:10px;font-weight:600;color:var(--ink)">'+k+'</div></div>';
+      }).join('');
+    } else {
+      totaisEl.innerHTML='';
+    }
+  }
+
+  // Lista
+  if(!devs.length){
+    corpo.innerHTML='<tr><td colspan="5"><div class="empty">Nenhum item.</div></td></tr>';
+    return;
+  }
+
+  corpo.innerHTML=devs.map(function(d){
+    var itensHtml='';
+    (d.itens||[]).filter(function(i){return i.qtd>0;}).forEach(function(i){
+      var tam=(i.tamanhos&&i.tamanhos.length)?' '+i.tamanhos[0]:'';
+      itensHtml+='<span style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:2px 7px;font-size:10px;margin-right:3px;">'+i.produto+tam+' x'+i.qtd+'</span>';
+    });
+    if(!itensHtml) itensHtml='<span style="font-size:10px;color:var(--muted)">ver devolucao</span>';
+    var id=d.id;
+    var acoes='';
+    if(aba==='aguardando'){
+      acoes='<button onclick="lavEnviar('+id+')" style="background:var(--blue);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;margin-right:4px;">🚚 Enviar</button>'+
+            '<button onclick="lavDescartar('+id+')" style="background:#FEF0EE;color:#C0392B;border:1px solid #F5B8B3;border-radius:6px;padding:4px 8px;font-size:10px;cursor:pointer;">🗑️</button>';
+    } else if(aba==='enviado'){
+      acoes='<span style="font-size:10px;color:var(--muted)">aguardando retorno</span>';
+    }
+    return '<tr>'+
+      '<td style="font-size:11px;white-space:nowrap">'+(d.data||'-')+'</td>'+
+      '<td class="td-name">'+(d.nome||'?')+'</td>'+
+      '<td>'+itensHtml+'</td>'+
+      '<td style="font-size:11px">'+(d.unidade||'-')+'</td>'+
+      '<td>'+acoes+'</td></tr>';
+  }).join('');
+}
+
+function lavEnviar(id){
+  var d=(db.devolucoes||[]).find(function(x){return x.id===id;});
+  if(!d) return;
+  d.statusLav='enviado';
+  d.dataEnvioLav=new Date().toLocaleDateString('pt-BR');
+  save();lavRenderizar();atualizarContadores();
+  toast('🚚 Enviado para lavanderia!');
+}
+
+function lavDescartar(id){
+  if(!confirm('Marcar como descartado?')) return;
+  var d=(db.devolucoes||[]).find(function(x){return x.id===id;});
+  if(!d) return;
+  d.statusLav='descartado';
+  save();lavRenderizar();atualizarContadores();
+  toast('🗑️ Marcado como descartado.');
+}
+
+function lavEnviarTodos(){
+  var aguard=(db.devolucoes||[]).filter(function(d){return !d.statusLav||d.statusLav==='aguardando';});
+  if(!aguard.length){toast('Nenhum item aguardando.');return;}
+  if(!confirm('Enviar '+aguard.length+' devolucao(oes) para a lavanderia?')) return;
+  var dt=new Date().toLocaleDateString('pt-BR');
+  aguard.forEach(function(d){d.statusLav='enviado';d.dataEnvioLav=dt;});
+  save();lavRenderizar();atualizarContadores();
+  toast('✅ '+aguard.length+' marcadas como enviadas!');
+}
+
+// Manter compatibilidade com nomes antigos
+function renderLavanderia(){lavRenderizar();}
+function setLavTab(t){lavMudarAba(document.getElementById('lav-tab-'+t),t);}
+function marcarEnvioLav(id){lavEnviar(id);}
+function marcarDescarteLav(id){lavDescartar(id);}
+function confirmarEnvioLavanderia(){lavEnviarTodos();}
+
+function marcarEnvioLav(devId){
+  var dev=(db.devolucoes||[]).find(function(d){return d.id===devId;});
+  if(!dev) return;
+  dev.statusLav='enviado';
+  dev.dataEnvioLav=new Date().toLocaleDateString('pt-BR');
+  save();renderLavanderia();atualizarContadores();
+  toast('🚚 Marcado como enviado para lavanderia!');
+}
+function marcarDescarteLav(devId){
+  if(!confirm('Marcar como descartado?')) return;
+  var dev=(db.devolucoes||[]).find(function(d){return d.id===devId;});
+  if(!dev) return;
+  dev.statusLav='descartado';
+  save();renderLavanderia();atualizarContadores();
+  toast('🗑️ Marcado como descartado.');
+}
+
+// Quando uma entrada com fornecedor LAVANDERIA é registrada,
+// marcar os itens correspondentes como retornados na fila
+function marcarRetornoLavanderia(produto,tamanho,unidade,qtd){
+  if(!db.lavanderia) return;
+  var pendentes=db.lavanderia.filter(function(x){
+    return x.status==='aguardando'&&x.produto===produto&&x.tamanho===tamanho&&x.unidade===unidade;
+  });
+  var restante=qtd;
+  pendentes.forEach(function(x){
+    if(restante<=0) return;
+    if(x.qtd<=restante){x.status='retornado';restante-=x.qtd;}
+    else{
+      // Dividir o item
+      var novo=Object.assign({},x,{id:Date.now()+Math.random(),qtd:restante,status:'retornado'});
+      x.qtd-=restante;
+      db.lavanderia.push(novo);
+      restante=0;
+    }
+  });
+  save();
+}
+
+function renderAdmTransferencias(){
+  var el=document.getElementById('adm-transf-lista');
+  if(!el) return;
+  var lista=db.transferencias||[];
+  if(!lista.length){
+    el.innerHTML='<tr><td colspan="8"><div class="empty">Nenhuma transferencia registrada.</div></td></tr>';
+    return;
+  }
+  el.innerHTML=lista.map(function(t){
+    var btnDel=sessao&&sessao.perfil==='admin'?
+      '<button onclick="excluirTransferencia('+t.id+')" style="background:#FEF0EE;color:#C0392B;border:1px solid #F5B8B3;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer;">🗑️</button>':'';
+    return '<tr>'+
+      '<td style="font-size:11px;white-space:nowrap">'+(t.data||'-')+'<br><span style="color:var(--muted)">'+(t.hora||'')+'</span></td>'+
+      '<td class="td-name">'+(t.produto||'-')+'</td>'+
+      '<td>'+(t.tamanho||'-')+'</td>'+
+      '<td style="font-size:11px">'+(t.origem||'-')+'</td>'+
+      '<td style="font-size:11px;color:var(--green);font-weight:700">'+(t.destino||'-')+'</td>'+
+      '<td style="text-align:right;font-weight:700">'+(t.qtd||0)+'</td>'+
+      '<td style="font-size:10px;color:var(--muted)">'+(t.obs||'-')+'</td>'+
+      '<td>'+btnDel+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+function excluirTransferencia(id){
+  if(!confirm('Excluir esta transferencia?')) return;
+  db.transferencias=(db.transferencias||[]).filter(function(t){return t.id!==id;});
+  save();
+  renderTransferencias();
+  toast('Removido!');
+}
+
+function renderRelatorio(){
+  const el=document.getElementById('relatorio-body');
+  if(!el) return;
+  const unidades=['Bragança Paulista','Extrema','Guarulhos'];
+  const produtos=[...new Set(Object.keys(db.estoque).map(k=>k.split('|')[0]))].sort();
+  
+  let html='';
+  // Card resumo por unidade
+  html+='<div class="metrics" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px;">';
+  unidades.forEach(u=>{
+    const itens=Object.entries(db.estoque).filter(([k,v])=>k.split('|')[2]===u&&v>0);
+    const total=itens.reduce((s,[,v])=>s+v,0);
+    const valor=itens.reduce((s,[k,v])=>{const[p,t]=k.split('|');return s+getPreco(p,t)*v;},0);
+    const fmt=v=>'R$ '+v.toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+    html+=`<div class="mc" style="border-top:2px solid var(--gold);">
+      <div class="mc-lbl">${u}</div>
+      <div class="mc-val" style="font-size:18px">${total} <span style="font-size:11px;color:var(--muted)">peças</span></div>
+      <div class="mc-sub">${fmt(valor)} estimado</div>
+    </div>`;
+  });
+  html+='</div>';
+
+  // Tabela consolidada por produto
+  html+='<div class="card" style="padding:0;"><div class="tbl-wrap"><table class="t"><thead><tr><th>Produto</th><th>Tam.</th>';
+  unidades.forEach(u=>html+=`<th style="text-align:right">${u.split(' ')[0]}</th>`);
+  html+='<th style="text-align:right">Total</th></tr></thead><tbody>';
+  
+  produtos.forEach(p=>{
+    const tams=[...new Set(Object.keys(db.estoque).filter(k=>k.startsWith(p+'|')).map(k=>k.split('|')[1]))];
+    const ordemTam=['PP','P','M','G','GG','XG','EXG','ESP.','ESP. 5','34','35','36','37','38','39','40','41','42','43','44','45','46','G1','G2','G3','G4','G7','G8','ÚNICO'];
+    tams.sort((a,b)=>(ordemTam.indexOf(a)<0?99:ordemTam.indexOf(a))-(ordemTam.indexOf(b)<0?99:ordemTam.indexOf(b)));
+    tams.forEach(t=>{
+      const vals=unidades.map(u=>db.estoque[`${p}|${t}|${u}`]||0);
+      const tot=vals.reduce((a,b)=>a+b,0);
+      if(tot===0) return;
+      html+=`<tr><td class="td-name">${p}</td><td>${t}</td>`;
+      vals.forEach(v=>html+=`<td style="text-align:right;color:${v===0?'var(--border2)':v<=5?'var(--red)':v<=20?'var(--amber)':'var(--green)'};font-weight:${v>0?'700':'400'}">${v||'-'}</td>`);
+      html+=`<td style="text-align:right;font-weight:800">${tot}</td></tr>`;
+    });
+  });
+  html+='</tbody></table></div></div>';
+  el.innerHTML=html;
+}
   if(db.fornecedores.find(f=>f.nome===nome)){toast('⚠ Fornecedor já cadastrado!');return;}
   db.fornecedores.push({
     nome,
@@ -2197,6 +3336,23 @@ function salvarProduto(){
   if(!db.produtosExtras) db.produtosExtras=[];
 if(!db.log) db.log=[];
 if(!db.estoqueMin) db.estoqueMin={};
+// Aplicar mínimos padrão se não existirem
+var _mins={
+  'BOTA PVC SBF (CA 43377)': 5,
+  'CAMISETA FX AZUL': 20,
+  'CALÇA FX AZUL': 20,
+  'MOLETOM FX': 10,
+  'CAMISETA KOPENHAGEN': 20,
+  'CALÇA KOPENHAGEN': 20,
+  'MOLETOM KOPENHAGEN': 20,
+  'CAMISETA KOPENHAGEN BEGE': 10,
+  'CALÇA KOPENHAGEN BEGE': 10,
+  'MOLETOM KOPENHAGEN BEGE': 10,
+  'BALACLAVA': 30
+};
+Object.keys(_mins).forEach(function(p){
+  if(db.estoqueMin[p]===undefined) db.estoqueMin[p]=_mins[p];
+});
 if(!db.empresasCad) db.empresasCad=[];
 // Restaurar kits de empresas cadastradas
 (db.empresasCad||[]).forEach(function(e){KITS[e.nome]=e.kit;});
@@ -2256,8 +3412,9 @@ function renderCadastros(){
 // USUÁRIOS E LOGIN
 // ============================================================
 const USUARIOS = {
-  "almoxarifado": { senha: "123", perfil: "operador", nome: "Almoxarifado" },
-  "admin":        { senha: "123", perfil: "admin",   nome: "Administrador" },
+  "samara":  { senha: "123", perfil: "operador", nome: "Samara" },
+  "cintia":  { senha: "123", perfil: "operador", nome: "Cintia" },
+  "admin":   { senha: "123", perfil: "admin",    nome: "Administrador" },
 };
 
 let sessao = null;
@@ -2266,8 +3423,9 @@ let sessao = null;
 function selPerfil(p){
   document.getElementById('p-op').classList.toggle('on', p==='operador');
   document.getElementById('p-adm').classList.toggle('on', p==='admin');
-  document.getElementById('login-user').value = (p==='operador') ? 'almoxarifado' : 'admin';
-  document.getElementById('login-pass').value = '123';
+  document.getElementById('login-user').value = p==='admin' ? 'admin' : '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('login-user').focus();
   document.getElementById('login-err').textContent = '';
 }
 
@@ -2340,7 +3498,7 @@ function abrirDetalhe(tipo, id){
     ' <span class="badge '+(reg.status==='Completo'?'b-green':reg.status==='Parcial'?'b-amber':'b-gray')+'" style="font-size:10px;padding:3px 10px;">'+(reg.status||'')+'</span>';
 
   // Nome
-  document.getElementById('md-nome').textContent = reg.nome || reg.produto || '—';
+  document.getElementById('md-nome').textContent = reg.nome || reg.produto || '-';
   document.getElementById('md-sub').textContent = (reg.cliente||reg.empresa||reg.fornecedor||'') + ' · ' + (reg.unidade||'') + ' · ' + (reg.data||'') + ' ' + (reg.hora||'');
 
   // Dados funcionário
@@ -2368,7 +3526,7 @@ function abrirDetalhe(tipo, id){
 
   if(reg.itens && reg.itens.length){
     itensEl.innerHTML = reg.itens.filter(function(i){return i.qtd>0||i.tamanhos&&i.tamanhos.length;}).map(function(i){
-      var tams = i.tamanhos&&i.tamanhos.length ? i.tamanhos.join(', ') : '—';
+      var tams = i.tamanhos&&i.tamanhos.length ? i.tamanhos.join(', ') : '-';
       return '<div class="md-item">'+
         '<div><div class="md-item-name">'+i.produto+'</div>'+
         '<div class="md-item-tam">Tamanho: '+tams+'</div></div>'+
@@ -2476,6 +3634,160 @@ function toggleDevTam(btn,idx){
 // ============================================================
 // EXPORTAÇÃO EXCEL
 // ============================================================
+function exportarLavanderiaExcel(){
+  var tab=window._lavTab||'aguardando';
+  var filtroUni=document.getElementById('lav-filtro-uni')?document.getElementById('lav-filtro-uni').value:'';
+  var devs=(db.devolucoes||[]).filter(function(d){
+    var s=d.statusLav||'aguardando';
+    if(filtroUni&&d.unidade!==filtroUni) return false;
+    return s===tab;
+  });
+  var header=['Data','Hora','Funcionario','CPF','Unidade','Empresa','Itens','Status Lavanderia','Data Envio'];
+  var rows=devs.map(function(d){
+    var itensStr=(d.itens||[]).map(function(i){
+      return i.produto+(i.tamanhos&&i.tamanhos.length?' '+i.tamanhos.join('/'):'')+(i.qtd?' x'+i.qtd:'');
+    }).join(' | ');
+    return [d.data||'',d.hora||'',d.nome||'',d.cpf||'',d.unidade||'',d.empresa||'',itensStr,d.statusLav||'aguardando',d.dataEnvioLav||''];
+  });
+  var labels={aguardando:'Aguardando',enviado:'NaLavanderia',descartado:'Descartados'};
+  var nome='Lavanderia_'+(labels[tab]||tab)+'_'+new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')+'.csv';
+  downloadCSV([header].concat(rows),nome);
+  toast('Excel baixado!');
+}
+
+function exportarDevolucoesExcel(){
+  var filtroLav=document.getElementById('dev-filtro-status-lav')?document.getElementById('dev-filtro-status-lav').value:'';
+  var periodo=document.getElementById('dev-filtro-periodo')?document.getElementById('dev-filtro-periodo').value:'';
+  var lista=db.devolucoes||[];
+  lista=filtrarPeriodo(lista);
+  if(filtroLav==='aguardando') lista=lista.filter(function(d){return !d.statusLav||d.statusLav==='aguardando';});
+  else if(filtroLav==='enviado') lista=lista.filter(function(d){return d.statusLav==='enviado';});
+  else if(filtroLav==='arquivado') lista=lista.filter(function(d){return d.statusLav==='arquivado';});
+
+  // Coletar todos os produtos distintos para fazer colunas dinâmicas
+  var produtosSet={};
+  lista.forEach(function(d){
+    (d.itens||[]).forEach(function(i){
+      if(i.produto) produtosSet[i.produto]=true;
+    });
+  });
+  var produtos=Object.keys(produtosSet).sort();
+
+  // Header fixo + uma coluna por produto
+  var header=['Data','Hora','Nome','CPF','WhatsApp','Unidade','Empresa','Status Devolucao'];
+  produtos.forEach(function(p){ header.push(p); });
+  header=header.concat(['Status Lavanderia','Data Envio','Data Arquivo','Cracha','Chave','Refeitorio','Obs']);
+
+  var rows=lista.map(function(d){
+    // Mapear qtd por produto
+    var qtdPorProd={};
+    (d.itens||[]).forEach(function(i){
+      if(!i.produto) return;
+      var tam=i.tamanhos&&i.tamanhos.length?(' '+i.tamanhos[0]):'';
+      var qtd=i.qtd||0;
+      // Se já tem esse produto, somar
+      if(qtdPorProd[i.produto]){
+        qtdPorProd[i.produto]+=qtd;
+      } else {
+        qtdPorProd[i.produto]=qtd;
+      }
+    });
+
+    var row=[
+      d.data||'',d.hora||'',d.nome||'',d.cpf||'',d.contato||'',
+      d.unidade||'',d.empresa||'',d.status||''
+    ];
+    // Coluna por produto (0 se não devolveu aquele produto)
+    produtos.forEach(function(p){
+      row.push(qtdPorProd[p]||0);
+    });
+    row=row.concat([
+      d.statusLav||'aguardando',d.dataEnvioLav||'',d.dataArquivo||'',
+      d.cracha?'Sim':'',d.chave?'Sim':'',d.refeitorio?'Sim':'',
+      d.obs||''
+    ]);
+    return row;
+  });
+
+  var labelPer={hoje:'Hoje',semana:'Semana',mes:'Mes',mes_anterior:'MesAnterior'};
+  var nome='Devolucoes'+(periodo?'_'+(labelPer[periodo]||periodo):'')+'_'+new Date().toLocaleDateString('pt-BR').replace(/[/]/g,'-')+'.csv';
+  downloadCSV([header].concat(rows),nome);
+  toast('Excel baixado!');
+}
+
+function exportarSaidasExcel(){
+  const filtroUni=document.getElementById('sai-filtro-uni')?.value||'';
+  const filtroDest=document.getElementById('sai-filtro-dest')?.value||'';
+  let lista=saiTab==='todos'?db.saidas:db.saidas.filter(s=>s.status===saiTab);
+  if(filtroUni) lista=lista.filter(s=>s.unidade===filtroUni);
+  if(filtroDest==='__local__') lista=lista.filter(s=>!s.destino);
+  else if(filtroDest) lista=lista.filter(s=>s.destino===filtroDest);
+
+  // Colunas dinâmicas por produto
+  var produtosSet={};
+  lista.forEach(function(s){(s.itens||[]).forEach(function(i){if(i.produto) produtosSet[i.produto]=true;});});
+  var produtos=Object.keys(produtosSet).sort();
+
+  var header=['Data','Hora','Nome','CPF','WhatsApp','Unidade','Empresa','Status','Destino','Operador'];
+  produtos.forEach(function(p){header.push(p);});
+  header.push('Obs');
+
+  var rows=lista.map(function(s){
+    var qtds={};
+    (s.itens||[]).forEach(function(i){if(i.produto) qtds[i.produto]=(qtds[i.produto]||0)+(i.qtd||0);});
+    var row=[s.data||'',s.hora||'',s.nome||'',s.cpf||'',s.contato||'',s.unidade||'',s.cliente||'',s.status||'',s.destino||'',s.operador||''];
+    produtos.forEach(function(p){row.push(qtds[p]||0);});
+    row.push(s.obs||'');
+    return row;
+  });
+
+  var nome='Saidas'+(filtroUni?'_'+filtroUni.replace(/ /g,''):'')+'_'+new Date().toLocaleDateString('pt-BR').replace(/[/]/g,'-')+'.csv';
+  downloadCSV([header].concat(rows),nome);
+  toast('Excel baixado!');
+}
+
+function exportarEntradasExcel(){
+  const filtroUni=document.getElementById('ent-filtro-uni')?.value||'';
+  const filtroDest=document.getElementById('ent-filtro-dest')?.value||'';
+  let lista=db.entradas;
+  if(filtroUni) lista=lista.filter(e=>e.unidade===filtroUni);
+  if(filtroDest==='__local__') lista=lista.filter(e=>!e.destino);
+  else if(filtroDest) lista=lista.filter(e=>e.destino===filtroDest);
+
+  // Colunas dinâmicas por produto
+  var produtosSet={};
+  lista.forEach(function(e){if(e.produto) produtosSet[e.produto]=true;});
+  var produtos=Object.keys(produtosSet).sort();
+
+  var header=['Data','Hora','Unidade','Fornecedor','NF','Destino','Custo Unit.'];
+  produtos.forEach(function(p){header.push(p);});
+  header.push('Total Geral','Obs');
+
+  var rows=lista.map(function(e){
+    var row=[e.data||'',e.hora||'',e.unidade||'',e.fornecedor||'',e.nf||'',e.destino||'',e.custo||0];
+    // Entrada é por produto individual — colocar qtd na coluna certa
+    produtos.forEach(function(p){row.push(e.produto===p?(e.qtd||0):0);});
+    row.push(e.total||e.qtd||0);
+    row.push(e.obs||'');
+    return row;
+  });
+
+  var nome='Entradas'+(filtroUni?'_'+filtroUni.replace(/ /g,''):'')+'_'+new Date().toLocaleDateString('pt-BR').replace(/[/]/g,'-')+'.csv';
+  downloadCSV([header].concat(rows),nome);
+  toast('Excel baixado!');
+}
+
+function downloadCSV(rows,filename){
+  var bom='\uFEFF';
+  var lines=rows.map(function(r){return r.map(function(v){var s=String(v==null?'':v).replace(/"/g,'""');return (s.indexOf(',')>=0||s.indexOf(';')>=0||s.indexOf('"')>=0||s.indexOf('\n')>=0)?'"'+s+'"':s;}).join(';');});
+  var csv=bom+lines.join('\r\n');
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download=filename;a.click();
+  setTimeout(function(){URL.revokeObjectURL(url);},1000);
+}
+
 function exportarExcel(){
   if(typeof XLSX === 'undefined'){
     toast('⚠ Biblioteca Excel não carregada. Verifique sua conexão.');
@@ -2763,6 +4075,89 @@ function renderEmpresasCad(){
     <div class="li-sub">${e.kit.map(k=>k.u+' ×'+k.q+(k.ca?' CA'+k.ca:'')).join(' · ')}</div></div>
     <button onclick="excluirEmpresaCad(${i})" class="btn sm red-outline">Excluir</button>
   </div>`).join('');
+}
+
+// ============================================================
+// FUNÇÕES DE EXCLUSÃO — APENAS ADMIN
+// ============================================================
+function excluirEntrada(id,event){
+  if(event)event.stopPropagation();
+  if(!sessao||sessao.perfil!=='admin'){toast('⚠ Apenas administrador pode excluir.');return;}
+  if(!confirm('Excluir esta entrada?\nO estoque será ajustado automaticamente.'))return;
+  var idx=db.entradas.findIndex(function(e){return e.id===id;});
+  if(idx<0)return;
+  var ent=db.entradas[idx];
+  var key=ent.produto+'|'+ent.tamanho+'|'+ent.unidade;
+  if(db.estoque[key])db.estoque[key]=Math.max(0,(db.estoque[key]||0)-ent.qtd);
+  db.entradas.splice(idx,1);
+  save();
+  logAtividade('entrada','[ADMIN] Entrada excluída: '+ent.produto+' '+ent.tamanho+' ×'+ent.qtd);
+  toast('🗑️ Entrada excluída e estoque ajustado.');
+  renderEntradas();atualizarContadores();
+}
+
+function excluirSaida(id,event){
+  if(event)event.stopPropagation();
+  if(!sessao||sessao.perfil!=='admin'){toast('⚠ Apenas administrador pode excluir.');return;}
+  if(!confirm('Excluir esta saída?\nO estoque será devolvido automaticamente.'))return;
+  var idx=db.saidas.findIndex(function(s){return s.id===id;});
+  if(idx<0)return;
+  var s=db.saidas[idx];
+  (s.itens||[]).forEach(function(item){
+    if(item.tamanhos&&item.tamanhos.length){
+      var key=item.produto+'|'+item.tamanhos[0]+'|'+s.unidade;
+      db.estoque[key]=(db.estoque[key]||0)+(item.qtd||1);
+    }
+  });
+  db.saidas.splice(idx,1);
+  save();
+  logAtividade('saida','[ADMIN] Saída excluída: '+s.nome+' ('+s.cliente+')');
+  toast('🗑️ Saída excluída e estoque devolvido.');
+  renderSaidas();atualizarContadores();
+}
+
+function devMarcarLav(id, novoStatus){
+  var dev=(db.devolucoes||[]).find(function(d){return d.id===id;});
+  if(!dev) return;
+  dev.statusLav=novoStatus;
+  if(novoStatus==='enviado') dev.dataEnvioLav=new Date().toLocaleDateString('pt-BR');
+  save();renderDevs();atualizarContadores();
+  var msgs={
+    enviado:'🚚 Marcado como retirado pela lavanderia!',
+    aguardando:'🧺 Voltou para aguardando.',
+    arquivado:'📁 Arquivado!'
+  };
+  toast(msgs[novoStatus]||'Atualizado!');
+}
+
+function arquivarDevolucao(id){
+  var dev=(db.devolucoes||[]).find(function(d){return d.id===id;});
+  if(!dev) return;
+  if(!confirm('Confirmar que a lavanderia retornou as peças e arquivar esta devolução?')) return;
+  dev.statusLav='arquivado';
+  dev.dataArquivo=new Date().toLocaleDateString('pt-BR');
+  save();renderDevs();renderLavanderia();atualizarContadores();
+  toast('📁 Devolução arquivada!');
+}
+
+function excluirDevolucao(id,event){
+  if(event)event.stopPropagation();
+  if(!sessao||sessao.perfil!=='admin'){toast('⚠ Apenas administrador pode excluir.');return;}
+  if(!confirm('Excluir esta devolução?\nO estoque será ajustado.'))return;
+  var idx=db.devolucoes.findIndex(function(d){return d.id===id;});
+  if(idx<0)return;
+  var d=db.devolucoes[idx];
+  (d.itens||[]).forEach(function(item){
+    if(item.tamanhos&&item.tamanhos.length&&item.qtd>0){
+      var key=item.produto+'|'+item.tamanhos[0]+'|'+d.unidade;
+      db.estoque[key]=Math.max(0,(db.estoque[key]||0)-item.qtd);
+    }
+  });
+  db.devolucoes.splice(idx,1);
+  save();
+  logAtividade('devolucao','[ADMIN] Devolução excluída: '+d.nome);
+  toast('🗑️ Devolução excluída.');
+  renderDevs();atualizarContadores();
 }
 
 function excluirEmpresaCad(idx){

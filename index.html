@@ -2375,7 +2375,20 @@ function renderItensAdicionados(){
   }).join('');
 }
 
-function save(){try{localStorage.setItem('gfx_v5',JSON.stringify(db));}catch(e){}}
+function save(){
+  try{localStorage.setItem('gfx_v5',JSON.stringify(db));}catch(e){}
+  if(typeof fbDb!=='undefined'){
+    try{
+      fbDb.ref('dados').set({
+        saidas:db.saidas||[],
+        entradas:db.entradas||[],
+        devolucoes:db.devolucoes||[],
+        transferencias:db.transferencias||[],
+        estoque:db.estoque||{}
+      }).catch(function(e){console.warn('fb err',e);});
+    }catch(e){}
+  }
+}
 function isBota(u){return u.toLowerCase().includes('bota');}
 function isUnico(u){return u.includes('Balaclava')||u.includes('Protetor')||u.includes('Colete');}
 function diasAtraso(ds){try{const[d,m,y]=ds.split('/');return Math.floor((new Date()-new Date(`${y}-${m}-${d}`))/86400000);}catch(e){return 0;}}
@@ -3603,6 +3616,24 @@ function fazerLogin(){
   try { buildFornOptions('ent-forn'); } catch(e){}
   go('dashboard');
   setTimeout(function(){try{verificarAlertaEstoque();}catch(e){}},800);
+  // Firebase: listener tempo real
+  if(typeof fbDb!=='undefined'){
+    fbDb.ref('dados').on('value',function(snap){
+      var d=snap.val();
+      if(!d) return;
+      var mudou=false;
+      if(d.saidas&&JSON.stringify(d.saidas)!==JSON.stringify(db.saidas)){db.saidas=d.saidas;mudou=true;}
+      if(d.entradas&&JSON.stringify(d.entradas)!==JSON.stringify(db.entradas)){db.entradas=d.entradas;mudou=true;}
+      if(d.devolucoes&&JSON.stringify(d.devolucoes)!==JSON.stringify(db.devolucoes)){db.devolucoes=d.devolucoes;mudou=true;}
+      if(d.transferencias&&JSON.stringify(d.transferencias)!==JSON.stringify(db.transferencias)){db.transferencias=d.transferencias;mudou=true;}
+      if(d.estoque&&JSON.stringify(d.estoque)!==JSON.stringify(db.estoque)){db.estoque=d.estoque;mudou=true;}
+      if(mudou){
+        try{localStorage.setItem('gfx_v5',JSON.stringify(db));}catch(e){}
+        atualizarContadores();
+        toast('🔄 Dados atualizados!');
+      }
+    });
+  }
 }
 
 function aplicarPerfil(){

@@ -2260,6 +2260,121 @@ catch(e){}
   if(db.lavanderia.length>0) try{localStorage.setItem('gfx_v5',JSON.stringify(db));}catch(e){}
 })();
 
+
+// Produtos disponíveis no seletor livre
+var PRODUTOS_DISPONIVEIS = [
+  {nome:'CAMISETA FX AZUL', tamanhos:['PP','P','M','G','GG','XG','EXG','ESP.']},
+  {nome:'CALÇA FX AZUL', tamanhos:['PP','P','M','G','GG','XG','EXG','G1','G2','G3','ESP.']},
+  {nome:'MOLETOM FX', tamanhos:['PP','P','M','G','GG','XG','EXG','ESP.']},
+  {nome:'CAMISETA BRANCA', tamanhos:['P','M','G','GG','XG','EXG','ESP.','ESP.3']},
+  {nome:'CALÇA BRANCA', tamanhos:['PP','P','M','G','GG','XG','EXG','ESP.']},
+  {nome:'CAMISETA BEGE', tamanhos:['PP','P','M','G','GG','XG','EXG','ESP.']},
+  {nome:'CALÇA BEGE', tamanhos:['PP','P','M','G','GG','XG','EXG','ESP.','ESP.2']},
+  {nome:'MOLETOM BEGE', tamanhos:['P','M','G','GG','XG','EXG']},
+  {nome:'CAMISETA KOPENHAGEN', tamanhos:['P','M','G','GG','XG','ESP.']},
+  {nome:'CALÇA KOPENHAGEN', tamanhos:['P','M','G','GG','XG','ESP.']},
+  {nome:'MOLETOM KOPENHAGEN', tamanhos:['P','M','G','GG','XG','ESP.']},
+  {nome:'BERMUDA', tamanhos:['PP','P','M','G','GG','XG','EXG','ESP.']},
+  {nome:'BERMUDA AZUL MARINHO', tamanhos:['P','M','G','GG','XG']},
+  {nome:'BOTA AÇO FX (CA 17014)', tamanhos:['34','35','36','37','38','39','40','41','42','43','44','45','46']},
+  {nome:'BOTA PVC SBF (CA 43377)', tamanhos:['34','35','36','37','38','39','40','41','42','43','44','45']},
+  {nome:'BOTA METATARSO (CA 43959)', tamanhos:['35','36','37','38','39','40','41','42','43','44']},
+  {nome:'BOTA PVC DIARISTA FX', tamanhos:['34','35','36','37','38','39','40','41','42','43','44','45','46','47','48','49']},
+  {nome:'BOTA MERCADO LIVRE', tamanhos:['34','35','36','37','38','39','40','41','42','43','44','45','46','47']},
+  {nome:'BOTA KOPENHAGEN', tamanhos:['35','36','37','38','39','40','41','42','43','44','45','46']},
+  {nome:'BOTA KOPENHAGEN PRODUCAO', tamanhos:['35','36','37','38','39','40','41','42','43','44','45','46']},
+  {nome:'COLETE AMARELO', tamanhos:['P','M','G','GG','XG','EXG','XXG']},
+  {nome:'COLETE LARANJA', tamanhos:['P','M','G','GG','XG','EXG','XXG']},
+  {nome:'COLETE AMARELO COM LOGO', tamanhos:['G','XXG']},
+  {nome:'COLETE LARANJA COM LOGO', tamanhos:['M','G','GG','XG','XXG']},
+  {nome:'COLETE AMARELO SEM LOGO', tamanhos:['M','G','XG']},
+  {nome:'COLETE LARANJA SEM LOGO', tamanhos:['G','XG']},
+  {nome:'BALACLAVA', tamanhos:['ÚNICO']},
+  {nome:'ABAFADOR', tamanhos:['ÚNICO']},
+  {nome:'PROTETOR AURICULAR', tamanhos:['ÚNICO']},
+  {nome:'LUVA', tamanhos:['P','M','G','GG']},
+];
+
+function renderSeletorLivre(){
+  var opts = PRODUTOS_DISPONIVEIS.map(function(p){
+    return '<option value="'+p.nome+'">'+p.nome+'</option>';
+  }).join('');
+  return '<div id="seletor-livre">'+
+    '<div id="itens-adicionados" style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:6px;min-height:32px;"></div>'+
+    '<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">'+
+      '<div>'+
+        '<label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:3px;">PRODUTO</label>'+
+        '<select id="sl-produto" onchange="atualizarTamanhosLivre()" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;min-width:200px;">'+
+          '<option value="">— Selecione —</option>'+opts+
+        '</select>'+
+      '</div>'+
+      '<div>'+
+        '<label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:3px;">TAMANHO</label>'+
+        '<select id="sl-tamanho" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;min-width:80px;">'+
+          '<option>—</option>'+
+        '</select>'+
+      '</div>'+
+      '<div>'+
+        '<label style="font-size:10px;font-weight:700;color:var(--muted);display:block;margin-bottom:3px;">QTD</label>'+
+        '<input id="sl-qtd" type="number" value="1" min="1" max="99" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;width:60px;">'+
+      '</div>'+
+      '<button onclick="adicionarItemLivre()" style="background:var(--gold);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;">+ Adicionar</button>'+
+    '</div>'+
+  '</div>';
+}
+
+function bindSeletorLivre(){
+  // já renderizado com onclick inline
+}
+
+function atualizarTamanhosLivre(){
+  var prod = document.getElementById('sl-produto')?.value;
+  var sel = document.getElementById('sl-tamanho');
+  if(!sel) return;
+  var p = PRODUTOS_DISPONIVEIS.find(function(x){return x.nome===prod;});
+  if(!p){sel.innerHTML='<option>—</option>';return;}
+  sel.innerHTML = p.tamanhos.map(function(t){return '<option>'+t+'</option>';}).join('');
+}
+
+window._itensLivres = [];
+function adicionarItemLivre(){
+  var prod = document.getElementById('sl-produto')?.value;
+  var tam = document.getElementById('sl-tamanho')?.value;
+  var qtd = parseInt(document.getElementById('sl-qtd')?.value)||1;
+  if(!prod||prod==='— Selecione —'){alert('Selecione um produto!');return;}
+  // Verificar se já existe
+  var existe = window._itensLivres.find(function(i){return i.produto===prod&&i.tamanhos[0]===tam;});
+  if(existe){existe.qtd+=qtd;}
+  else{window._itensLivres.push({produto:prod,tamanhos:[tam],qtd:qtd});}
+  renderItensAdicionados();
+  // Resetar
+  document.getElementById('sl-qtd').value=1;
+}
+
+function removerItemLivre(idx){
+  window._itensLivres.splice(idx,1);
+  renderItensAdicionados();
+}
+
+function renderItensAdicionados(){
+  var el=document.getElementById('itens-adicionados');
+  if(!el) return;
+  if(!window._itensLivres.length){
+    el.innerHTML='<span style="font-size:11px;color:var(--muted);font-style:italic;">Nenhum item adicionado ainda</span>';
+    return;
+  }
+  window._remItemLivre={};
+  window._itensLivres.forEach(function(item,i){
+    window._remItemLivre[i]=function(){removerItemLivre(i);};
+  });
+  el.innerHTML=window._itensLivres.map(function(item,i){
+    return '<span style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:6px;">'+
+      item.produto+' '+item.tamanhos[0]+' x'+item.qtd+
+      '<button onclick="window._remItemLivre['+i+']()" style="background:none;border:none;color:#C0392B;cursor:pointer;font-size:14px;line-height:1;padding:0;">×</button>'+
+    '</span>';
+  }).join('');
+}
+
 function save(){try{localStorage.setItem('gfx_v5',JSON.stringify(db));}catch(e){}}
 function isBota(u){return u.toLowerCase().includes('bota');}
 function isUnico(u){return u.includes('Balaclava')||u.includes('Protetor')||u.includes('Colete');}
@@ -2338,7 +2453,11 @@ function carregarKit(){
   if(!cli){area.style.display='none';return;}
   const kit=KITS[cli]||[];
   area.style.display='block';
-  if(!kit.length){document.getElementById('kit-itens').innerHTML='<div class="empty">Sem kit padrão definido. Registre normalmente usando observações.</div>';return;}
+  if(!kit.length){
+    document.getElementById('kit-itens').innerHTML=renderSeletorLivre();
+    bindSeletorLivre();
+    return;
+  }
   document.getElementById('kit-itens').innerHTML=kit.map((item,idx)=>{
     const tams=isBota(item.u)?TAMS_B:isUnico(item.u)?TAMS_U:TAMS_R;
     const auto=isUnico(item.u);
@@ -4084,15 +4203,59 @@ function salvarEmpresa(){
 }
 
 function renderEmpresasCad(){
-  const el=document.getElementById('lista-empresas-cad');
+  var el=document.getElementById('lista-empresas-cad');
   if(!el) return;
-  const list=db.empresasCad||[];
-  el.innerHTML=!list.length?'<div class="empty">Nenhuma empresa extra cadastrada.</div>':
-  list.map((e,i)=>`<div class="li" style="display:flex;justify-content:space-between;align-items:flex-start;">
-    <div><div class="li-main">${e.nome}</div>
-    <div class="li-sub">${e.kit.map(k=>k.u+' ×'+k.q+(k.ca?' CA'+k.ca:'')).join(' · ')}</div></div>
-    <button onclick="excluirEmpresaCad(${i})" class="btn sm red-outline">Excluir</button>
-  </div>`).join('');
+
+  // Empresas fixas do KITS
+  var kitKeys=Object.keys(KITS);
+  // Empresas extras do db
+  var extras=db.empresasCad||[];
+
+  var htmlFixas=kitKeys.length?
+    '<div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin-bottom:6px;">EMPRESAS DO SISTEMA</div>'+
+    kitKeys.map(function(nome){
+      var itens=KITS[nome]||[];
+      var desc=itens.map(function(k){return k.u+' x'+k.q;}).join(' · ');
+      window._delKit=window._delKit||{};
+      window._delKit[nome]=function(){excluirEmpresaFixa(nome);};
+      return '<div class="li" style="display:flex;justify-content:space-between;align-items:center;">'+
+        '<div><div class="li-main">'+nome+'</div>'+
+        '<div class="li-sub">'+desc+'</div></div>'+
+        '<button data-delkit="1" data-nome="'+nome+'" style="background:#FEF0EE;color:#C0392B;border:1px solid #F5B8B3;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;">Excluir</button>'+
+      '</div>';
+    }).join('')
+  :'';
+
+  var htmlExtras=extras.length?
+    '<div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin:10px 0 6px;">EMPRESAS CADASTRADAS</div>'+
+    extras.map(function(e,i){
+      var desc=(e.kit||[]).map(function(k){return k.u+' x'+k.q+(k.ca?' CA'+k.ca:'');}).join(' · ');
+      return '<div class="li" style="display:flex;justify-content:space-between;align-items:center;">'+
+        '<div><div class="li-main">'+e.nome+'</div>'+
+        '<div class="li-sub">'+desc+'</div></div>'+
+        '<button onclick="excluirEmpresaCad('+i+')" style="background:#FEF0EE;color:#C0392B;border:1px solid #F5B8B3;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;">Excluir</button>'+
+      '</div>';
+    }).join('')
+  :'';
+
+  el.innerHTML = (htmlFixas+htmlExtras) || '<div class="empty">Nenhuma empresa cadastrada.</div>';
+  // Listener para excluir empresa fixa
+  el.addEventListener('click', function(ev){
+    var btn=ev.target.closest('[data-delkit]');
+    if(!btn) return;
+    var nome=btn.getAttribute('data-nome');
+    if(nome) excluirEmpresaFixa(nome);
+  }, {once:true});
+}
+
+function excluirEmpresaFixa(nome){
+  if(!confirm('Excluir a empresa "'+nome+'" do sistema? Ela não aparecerá mais no select de empresas.')) return;
+  delete KITS[nome];
+  // Salvar lista negra no db
+  if(!db.kitsBloqueados) db.kitsBloqueados=[];
+  if(db.kitsBloqueados.indexOf(nome)<0) db.kitsBloqueados.push(nome);
+  save();renderEmpresasCad();atualizarSelectEmpresas();
+  toast('Empresa removida!');
 }
 
 // ============================================================

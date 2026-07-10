@@ -3353,7 +3353,25 @@ function fazerLogin(){
   try { buildProdOptions('ent-prod'); } catch(e){}
   try { buildFornOptions('ent-forn'); } catch(e){}
   go('dashboard');
-  setTimeout(function(){try{verificarAlertaEstoque();}catch(e){}},800);
+
+  // Conectar Supabase e carregar dados em tempo real
+  testarConexao().then(function(online){
+    var el=document.getElementById('sb-status');
+    if(el) el.textContent=online?'Conectado':'Offline — dados locais';
+    if(online){
+      carregarDoSupabase().then(function(){
+        // Após carregar, atualizar tela atual
+        try{ renderSaidas(); }catch(e){}
+        try{ renderHistorico(); }catch(e){}
+        try{ renderDash(); }catch(e){}
+        try{ atualizarContadores(); }catch(e){}
+        // Iniciar sync em tempo real
+        setTimeout(function(){ iniciarSyncRealtime(); }, 1000);
+      }).catch(function(e){ console.error('Erro ao carregar:', e); });
+    }
+  });
+
+  setTimeout(function(){try{verificarAlertaEstoque();}catch(e){}},5000);
 }
 
 function aplicarPerfil(){

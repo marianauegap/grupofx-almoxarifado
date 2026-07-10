@@ -3616,22 +3616,16 @@ function fazerLogin(){
   try { buildFornOptions('ent-forn'); } catch(e){}
   go('dashboard');
 
-  // *** CARREGAR DADOS DO SUPABASE ***
+  // *** SUPABASE DESATIVADO COMO CARREGAMENTO AUTOMÁTICO ***
+  // Motivo: o Supabase só recebia SAÍDAS e ESTOQUE (nunca entradas, devoluções,
+  // exclusões e configurações). Carregar automaticamente do Supabase no login e
+  // fazer polling a cada 30s sobrescrevia o Firebase (que tem os dados completos
+  // e em tempo real) com uma versão desatualizada/incompleta, apagando alterações
+  // de outros usuários. O Firebase agora é a única fonte de sincronização em
+  // tempo real. O botão "Carregar da nuvem (Supabase)" continua disponível para
+  // uso manual/backup, mas não roda mais sozinho.
   testarConexao().then(function(online){
-    if(online){
-      carregarDoSupabase().then(function(){
-        try{renderSaidas();}catch(e){}
-        try{renderEntradas();}catch(e){}
-        try{renderHistorico();}catch(e){}
-        try{renderDash();}catch(e){}
-        try{atualizarContadores();}catch(e){}
-        // Polling a cada 30s
-        if(window._syncTimer) clearInterval(window._syncTimer);
-        window._syncTimer = setInterval(function(){
-          syncBackground().catch(function(){});
-        }, 30000);
-      }).catch(function(e){ console.error('Erro Supabase:',e); });
-    }
+    supabaseOnline = online;
   });
 
   setTimeout(function(){try{verificarAlertaEstoque();}catch(e){}},5000);

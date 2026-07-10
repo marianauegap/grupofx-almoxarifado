@@ -3615,7 +3615,26 @@ function fazerLogin(){
   try { buildProdOptions('ent-prod'); } catch(e){}
   try { buildFornOptions('ent-forn'); } catch(e){}
   go('dashboard');
-  setTimeout(function(){try{verificarAlertaEstoque();}catch(e){}},800);
+
+  // *** CARREGAR DADOS DO SUPABASE ***
+  testarConexao().then(function(online){
+    if(online){
+      carregarDoSupabase().then(function(){
+        try{renderSaidas();}catch(e){}
+        try{renderEntradas();}catch(e){}
+        try{renderHistorico();}catch(e){}
+        try{renderDash();}catch(e){}
+        try{atualizarContadores();}catch(e){}
+        // Polling a cada 30s
+        if(window._syncTimer) clearInterval(window._syncTimer);
+        window._syncTimer = setInterval(function(){
+          syncBackground().catch(function(){});
+        }, 30000);
+      }).catch(function(e){ console.error('Erro Supabase:',e); });
+    }
+  });
+
+  setTimeout(function(){try{verificarAlertaEstoque();}catch(e){}},5000);
   // Firebase: listener tempo real
   if(typeof fbDb!=='undefined'){
     fbDb.ref('dados').on('value',function(snap){
@@ -4895,6 +4914,9 @@ async function carregarDoSupabase(){
     });}
     save();
     supabaseOnline=true;
+    try{renderSaidas();}catch(e){}
+    try{renderEntradas();}catch(e){}
+    try{renderHistorico();}catch(e){}
     var el=document.getElementById('sb-status');
     if(el) el.textContent='Ultima sync: '+new Date().toLocaleTimeString('pt-BR');
     toast('Dados sincronizados! '+db.saidas.length+' saidas carregadas.');
@@ -4956,6 +4978,46 @@ function instalarApp(){
 function fecharBannerPWA(){
   var banner = document.getElementById('pwa-banner');
   if(banner) banner.style.display='none';
+}
+
+
+// *** SYNC BACKGROUND A CADA 30S ***
+async function syncBackground(){
+  if(!supabaseOnline) return;
+  try{
+    var ults = db.saidas&&db.saidas.length ? db.saidas[0].id : 0;
+    var ulte = db.entradas&&db.entradas.length ? db.entradas[0].id : 0;
+    var ultd = db.devolucoes&&db.devolucoes.length ? db.devolucoes[0].id : 0;
+    var mudou = false;
+    if(ults){
+      var ns = await sbFetch('saidas','GET',null,'id=gt.'+ults+'&order=id.asc&limit=100');
+      if(ns&&ns.length){ db.saidas = ns.concat(db.saidas); mudou=true; }
+    }
+    if(ulte){
+      var ne = await sbFetch('entradas','GET',null,'id=gt.'+ulte+'&order=id.asc&limit=100');
+      if(ne&&ne.length){ db.entradas = ne.concat(db.entradas); mudou=true; }
+    }
+    if(ultd){
+      var nd = await sbFetch('devolucoes','GET',null,'id=gt.'+ultd+'&order=id.asc&limit=100');
+      if(nd&&nd.length){ db.devolucoes = nd.concat(db.devolucoes); mudou=true; }
+    }
+    // Estoque sempre
+    var est = await sbFetch('estoque','GET',null,'limit=5000');
+    if(est&&est.length){ db.estoque={}; est.forEach(function(e){db.estoque[e.chave]=e.quantidade;}); mudou=true; }
+    if(mudou){
+      try{localStorage.setItem('gfx_v5',JSON.stringify(db));}catch(e){}
+      try{atualizarContadores();}catch(e){}
+      try{renderDash();}catch(e){}
+      var pag = document.querySelector('.page.on');
+      if(pag){
+        var pid = pag.id.replace('page-','');
+        if(pid==='saida') try{renderSaidas();}catch(e){}
+        if(pid==='entrada') try{renderEntradas();}catch(e){}
+        if(pid==='historico') try{renderHistorico();}catch(e){}
+      }
+      toast('🔄 Sincronizado!');
+    }
+  }catch(e){ console.warn('sync bg erro:',e.message); }
 }
 
 // Init — só roda após login

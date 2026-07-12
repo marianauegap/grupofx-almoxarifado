@@ -464,9 +464,34 @@ table.t tr:hover td{background:var(--surface);}
     messagingSenderId: "773785280009",
     appId: "1:773785280009:web:3c86cc6fb23b7d748722d8"
   };
-    firebase.initializeApp(firebaseConfig);
-    var fbDb = firebase.database();
-    var FB_ENABLED = true;
+    var FB_ENABLED = false;
+    var FB_INIT_ERRO = null;
+    try{
+      firebase.initializeApp(firebaseConfig);
+      var fbDb = firebase.database();
+      FB_ENABLED = true;
+    }catch(e){
+      FB_INIT_ERRO = (e && e.message) || String(e);
+      console.error('❌ Firebase falhou ao inicializar:', e);
+    }
+  </script>
+  <!-- Badge fixo de status de conexão — visível sempre, sem precisar abrir o console -->
+  <script>
+  window.addEventListener('load', function(){
+    var badge = document.createElement('div');
+    badge.id = 'fb-status-badge';
+    badge.style.cssText = 'position:fixed;bottom:10px;left:10px;z-index:99999;padding:6px 12px;border-radius:6px;font-size:11px;font-family:inherit;font-weight:bold;box-shadow:0 2px 8px rgba(0,0,0,.25);';
+    if (typeof fbDb !== 'undefined' && FB_ENABLED) {
+      badge.style.background = '#27ae60';
+      badge.style.color = '#fff';
+      badge.textContent = '🔥 Firebase carregado';
+    } else {
+      badge.style.background = '#c0392b';
+      badge.style.color = '#fff';
+      badge.textContent = '❌ Firebase NÃO carregou' + (FB_INIT_ERRO ? (': ' + FB_INIT_ERRO) : '');
+    }
+    document.body.appendChild(badge);
+  });
   </script>
 </head>
 <body>
@@ -2389,16 +2414,29 @@ function save(){
         estoque:db.estoque||{}
       }));
       fbDb.ref('dados').set(payload)
-        .then(function(){ window._fbUltimoErro=null; })
+        .then(function(){
+          window._fbUltimoErro=null;
+          var ok=document.getElementById('fb-ok-banner');
+          if(!ok){
+            ok=document.createElement('div');
+            ok.id='fb-ok-banner';
+            ok.style.cssText='position:fixed;bottom:10px;right:10px;z-index:99999;background:#27ae60;color:#fff;padding:8px 14px;font-size:12px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.3);';
+            document.body.appendChild(ok);
+          }
+          ok.textContent='✅ Sincronizado com Firebase às '+new Date().toLocaleTimeString('pt-BR');
+          ok.style.display='block';
+          clearTimeout(window._fbOkTimer);
+          window._fbOkTimer=setTimeout(function(){ if(ok) ok.style.display='none'; },4000);
+        })
         .catch(function(e){
           console.error('❌ Firebase set() falhou:',e);
           window._fbUltimoErro = (e && e.message) || String(e);
-          if(typeof toast==='function') toast('⚠️ Falha ao sincronizar: '+window._fbUltimoErro);
+          if(typeof toast==='function') toast('⚠️ Falha ao sincronizar: '+window._fbUltimoErro); bannerErroFirebase('Falha ao ENVIAR dados (save). '+window._fbUltimoErro);
         });
     }catch(e){
       console.error('❌ Firebase set() lançou erro síncrono:',e);
       window._fbUltimoErro = (e && e.message) || String(e);
-      if(typeof toast==='function') toast('⚠️ Falha ao sincronizar (erro síncrono): '+window._fbUltimoErro);
+      if(typeof toast==='function') toast('⚠️ Falha ao sincronizar (erro síncrono): '+window._fbUltimoErro); bannerErroFirebase('Falha ao ENVIAR dados (erro síncrono). '+window._fbUltimoErro);
     }
   }
 }
@@ -2407,6 +2445,16 @@ function isUnico(u){return u.includes('Balaclava')||u.includes('Protetor')||u.in
 function diasAtraso(ds){try{const[d,m,y]=ds.split('/');return Math.floor((new Date()-new Date(`${y}-${m}-${d}`))/86400000);}catch(e){return 0;}}
 function now(){return{data:new Date().toLocaleDateString('pt-BR'),hora:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})};}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),3000);}
+function bannerErroFirebase(msg){
+  var b=document.getElementById('fb-erro-banner');
+  if(!b){
+    b=document.createElement('div');
+    b.id='fb-erro-banner';
+    b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:#c0392b;color:#fff;padding:14px 20px;font-size:14px;font-family:inherit;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.3);';
+    document.body.appendChild(b);
+  }
+  b.innerHTML = '⚠️ ERRO DE SINCRONIZAÇÃO: ' + msg + ' &nbsp;&nbsp;<button onclick="document.getElementById(\'fb-erro-banner\').remove()" style="background:#fff;color:#c0392b;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-weight:bold;">Fechar</button>';
+}
 function showAlert(id,msg,tipo){const el=document.getElementById(id);el.innerHTML=`<div class="alert ${tipo}">${msg}</div>`;setTimeout(()=>el.innerHTML='',5000);}
 
 function go(p){
@@ -3661,7 +3709,7 @@ function fazerLogin(){
     }, function(erro){
       console.error('❌ Firebase listener falhou (provável bloqueio de permissão):',erro);
       window._fbUltimoErro = (erro && erro.message) || String(erro);
-      if(typeof toast==='function') toast('⚠️ Sem conexão com o banco em tempo real: '+window._fbUltimoErro);
+      if(typeof toast==='function') toast('⚠️ Sem conexão com o banco em tempo real: '+window._fbUltimoErro); bannerErroFirebase('Falha ao RECEBER dados (listener). '+window._fbUltimoErro);
     });
   }
 }

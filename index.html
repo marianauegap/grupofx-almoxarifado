@@ -2400,6 +2400,37 @@ function renderItensAdicionados(){
   }).join('');
 }
 
+function sanitizarChaveFirebase(k){
+  // Firebase RTDB proíbe . # $ / [ ] em chaves. Tamanhos como "ESP." usam ponto,
+  // o que quebrava o envio do estoque inteiro (e, junto, saídas/entradas/etc,
+  // já que tudo vai num só payload). Substitui por marcadores reversíveis.
+  return String(k)
+    .split('.').join('__DOT__')
+    .split('#').join('__HASH__')
+    .split('$').join('__DOLLAR__')
+    .split('/').join('__SLASH__')
+    .split('[').join('__LBRK__')
+    .split(']').join('__RBRK__');
+}
+function dessanitizarChaveFirebase(k){
+  return String(k)
+    .split('__DOT__').join('.')
+    .split('__HASH__').join('#')
+    .split('__DOLLAR__').join('$')
+    .split('__SLASH__').join('/')
+    .split('__LBRK__').join('[')
+    .split('__RBRK__').join(']');
+}
+function estoqueParaFirebase(estoque){
+  var out={};
+  Object.keys(estoque||{}).forEach(function(k){ out[sanitizarChaveFirebase(k)] = estoque[k]; });
+  return out;
+}
+function estoqueDoFirebase(estoqueFb){
+  var out={};
+  Object.keys(estoqueFb||{}).forEach(function(k){ out[dessanitizarChaveFirebase(k)] = estoqueFb[k]; });
+  return out;
+}
 function save(){
   try{localStorage.setItem('gfx_v5',JSON.stringify(db));}catch(e){}
   if(typeof fbDb!=='undefined'){
@@ -2411,7 +2442,7 @@ function save(){
         entradas:db.entradas||[],
         devolucoes:db.devolucoes||[],
         transferencias:db.transferencias||[],
-        estoque:db.estoque||{}
+        estoque:estoqueParaFirebase(db.estoque||{})
       }));
       fbDb.ref('dados').set(payload)
         .then(function(){
@@ -3700,7 +3731,7 @@ function fazerLogin(){
       if(d.entradas&&JSON.stringify(d.entradas)!==JSON.stringify(db.entradas)){db.entradas=d.entradas;mudou=true;}
       if(d.devolucoes&&JSON.stringify(d.devolucoes)!==JSON.stringify(db.devolucoes)){db.devolucoes=d.devolucoes;mudou=true;}
       if(d.transferencias&&JSON.stringify(d.transferencias)!==JSON.stringify(db.transferencias)){db.transferencias=d.transferencias;mudou=true;}
-      if(d.estoque&&JSON.stringify(d.estoque)!==JSON.stringify(db.estoque)){db.estoque=d.estoque;mudou=true;}
+      if(d.estoque&&JSON.stringify(estoqueDoFirebase(d.estoque))!==JSON.stringify(db.estoque)){db.estoque=estoqueDoFirebase(d.estoque);mudou=true;}
       if(mudou){
         try{localStorage.setItem('gfx_v5',JSON.stringify(db));}catch(e){}
         atualizarContadores();

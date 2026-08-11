@@ -924,6 +924,16 @@ table.t tr:hover td{background:var(--surface);}
       <button id="sai-tipo-prep" onclick="setSaiTipo('preposto')" style="padding:6px 16px;border-radius:20px;border:2px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;">🏢 Preposto</button>
     </div>
     <div class="fr2">
+      <div class="fg"><label class="fl">Matrícula</label>
+        <div style="display:flex;gap:6px;">
+          <input class="fi" id="sai-matricula" placeholder="Ex: 431795" onkeydown="if(event.key==='Enter'){event.preventDefault();buscarFuncionarioPorMatricula('sai');}" style="flex:1;">
+          <button type="button" onclick="buscarFuncionarioPorMatricula('sai')" style="padding:0 14px;border-radius:var(--r);border:1.5px solid var(--gold);background:var(--gold);color:#fff;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">🔍 Buscar</button>
+        </div>
+        <span id="sai-matricula-status" style="font-size:10px;margin-top:3px;display:block;"></span>
+      </div>
+      <div></div>
+    </div>
+    <div class="fr2">
       <div class="fg"><label class="fl" id="sai-nome-label">Nome completo</label><input class="fi" id="sai-nome" placeholder="Nome completo"></div>
       <div class="fg"><label class="fl">CPF</label><input class="fi" id="sai-cpf" placeholder="000.000.000-00" onblur="verificarPendenteCPF()"></div>
     </div>
@@ -1135,6 +1145,16 @@ table.t tr:hover td{background:var(--surface);}
   <div class="card">
     <div id="alert-dev"></div>
     <div class="sec-lbl">Dados do funcionário</div>
+    <div class="fr2">
+      <div class="fg"><label class="fl">Matrícula</label>
+        <div style="display:flex;gap:6px;">
+          <input class="fi" id="dev-matricula" placeholder="Ex: 431795" onkeydown="if(event.key==='Enter'){event.preventDefault();buscarFuncionarioPorMatricula('dev');}" style="flex:1;">
+          <button type="button" onclick="buscarFuncionarioPorMatricula('dev')" style="padding:0 14px;border-radius:var(--r);border:1.5px solid var(--gold);background:var(--gold);color:#fff;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">🔍 Buscar</button>
+        </div>
+        <span id="dev-matricula-status" style="font-size:10px;margin-top:3px;display:block;"></span>
+      </div>
+      <div></div>
+    </div>
     <div class="fr2">
       <div class="fg"><label class="fl">Nome completo</label><input class="fi" id="dev-nome" placeholder="Nome do funcionário"></div>
       <div class="fg"><label class="fl">CPF</label><input class="fi" id="dev-cpf" placeholder="000.000.000-00"></div>
@@ -2736,7 +2756,12 @@ function registrarEntrada(){
   const nf=nfEl?nfEl.value.trim():'';
   const arqNome=arqEl&&arqEl.files&&arqEl.files.length>0?arqEl.files[0].name:'';
   // Se fornecedor for LAVANDERIA, marcar retorno na fila
-  if(forn==='LAVANDERIA'||forn==='LAVANDERIA CLEAN') marcarRetornoLavanderia(prod,tam,uni,qtd);
+  if(forn==='LAVANDERIA'||forn==='LAVANDERIA CLEAN'){
+    try{
+      if(typeof marcarRetornoLavanderia==='function') marcarRetornoLavanderia(prod,tam,uni,qtd);
+      else if(typeof window.marcarRetornoLavanderia==='function') window.marcarRetornoLavanderia(prod,tam,uni,qtd);
+    }catch(e){ console.error('Erro ao marcar retorno da lavanderia (entrada ainda será salva):', e); }
+  }
   db.entradas.unshift({id:Date.now(),tipo:'entrada',data,hora,produto:prod,tamanho:tam,qtd,unidade:uni,
     fornecedor:forn,custo,total:+(custo*qtd).toFixed(2),
     nf,arquivo:arqNome,
@@ -2750,6 +2775,7 @@ function registrarEntrada(){
   const nomeEl=document.getElementById('ent-arquivo-nome');
   if(nomeEl)nomeEl.textContent='';
   renderEntradas();atualizarContadores();
+  if(typeof renderDevs==='function') renderDevs();
 }
 
 function renderEntradas(){
@@ -3488,14 +3514,56 @@ function marcarDescarteLav(devId){
 
 // Quando uma entrada com fornecedor LAVANDERIA é registrada,
 // marcar os itens correspondentes como retornados na fila
+// Busca dados do funcionário pela matrícula (via Firebase, alimentado pela planilha BASE DE DADOS)
+function buscarFuncionarioPorMatricula(prefixo){
+  var matriculaEl=document.getElementById(prefixo+'-matricula');
+  var statusEl=document.getElementById(prefixo+'-matricula-status');
+  var matricula=matriculaEl?matriculaEl.value.trim():'';
+  if(!matricula){ if(statusEl){statusEl.textContent='⚠ Digite a matrícula.';statusEl.style.color='#C0392B';} return; }
+  if(statusEl){statusEl.textContent='🔎 Buscando...';statusEl.style.color='var(--muted)';}
+  if(typeof fbDb==='undefined'||!fbDb){ if(statusEl){statusEl.textContent='⚠ Firebase indisponível.';statusEl.style.color='#C0392B';} return; }
+  fbDb.ref('funcionarios/'+matricula).once('value').then(function(snap){
+    var dados=snap.val();
+    if(!dados){
+      if(statusEl){statusEl.textContent='❌ Matrícula não encontrada na base.';statusEl.style.color='#C0392B';}
+      return;
+    }
+    var nomeEl=document.getElementById(prefixo+'-nome');
+    var cpfEl=document.getElementById(prefixo+'-cpf');
+    var telEl=document.getElementById(prefixo+'-tel');
+    if(nomeEl) nomeEl.value=dados.nome||'';
+    if(cpfEl) cpfEl.value=dados.cpf||'';
+    if(telEl) telEl.value=dados.telefone||'';
+    // Tenta selecionar a empresa correspondente no dropdown, se existir opção igual
+    var empEl=document.getElementById(prefixo==='sai'?'sai-cli':'dev-emp');
+    if(empEl&&dados.empresa){
+      var achou=false;
+      for(var i=0;i<empEl.options.length;i++){
+        if(empEl.options[i].text.trim().toUpperCase()===String(dados.empresa).trim().toUpperCase()){
+          empEl.selectedIndex=i;achou=true;
+          if(typeof empEl.onchange==='function') empEl.onchange();
+          break;
+        }
+      }
+      if(!achou&&statusEl){statusEl.textContent='✅ Dados preenchidos. (empresa "'+dados.empresa+'" não está na lista — selecione manualmente)';statusEl.style.color='#92400E';return;}
+    }
+    if(statusEl){statusEl.textContent='✅ Dados preenchidos automaticamente.';statusEl.style.color='var(--green)';}
+  }).catch(function(e){
+    console.error('Erro ao buscar funcionário:',e);
+    if(statusEl){statusEl.textContent='⚠ Erro ao buscar. Tente novamente.';statusEl.style.color='#C0392B';}
+  });
+}
+
 function marcarRetornoLavanderia(produto,tamanho,unidade,qtd){
   if(!db.lavanderia) return;
   var pendentes=db.lavanderia.filter(function(x){
     return x.status==='aguardando'&&x.produto===produto&&x.tamanho===tamanho&&x.unidade===unidade;
   });
   var restante=qtd;
+  var devIdsAfetados={};
   pendentes.forEach(function(x){
     if(restante<=0) return;
+    devIdsAfetados[x.devId]=true;
     if(x.qtd<=restante){x.status='retornado';restante-=x.qtd;}
     else{
       // Dividir o item
@@ -3505,8 +3573,20 @@ function marcarRetornoLavanderia(produto,tamanho,unidade,qtd){
       restante=0;
     }
   });
+  // Para cada devolução afetada, se TODOS os itens dela já retornaram, arquivar automaticamente
+  Object.keys(devIdsAfetados).forEach(function(devIdStr){
+    var devId=Number(devIdStr);
+    var itensDaDev=db.lavanderia.filter(function(x){return x.devId===devId;});
+    var todosRetornados=itensDaDev.length>0&&itensDaDev.every(function(x){return x.status==='retornado';});
+    if(todosRetornados&&db.devolucoes){
+      var dev=db.devolucoes.find(function(d){return d.id===devId;});
+      if(dev&&dev.statusLav!=='arquivado') dev.statusLav='arquivado';
+    }
+  });
   save();
+  if(typeof renderDevs==='function') renderDevs();
 }
+window.marcarRetornoLavanderia = marcarRetornoLavanderia;
 
 function renderAdmTransferencias(){
   var el=document.getElementById('adm-transf-lista');

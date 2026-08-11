@@ -3320,7 +3320,7 @@ function renderAlertas(){
 // ============================================================
 // Cache local dos funcionários vindos do Firebase (evita buscar tudo de novo a cada letra digitada)
 var _funcionariosCache=null;
-function carregarFuncionariosCache(cb){
+window.carregarFuncionariosCache=function(cb){
   if(_funcionariosCache){ cb(_funcionariosCache); return; }
   try{
     if(typeof firebase==='undefined'||!firebase.apps||!firebase.apps.length){ cb({}); return; }
@@ -3329,7 +3329,7 @@ function carregarFuncionariosCache(cb){
       cb(_funcionariosCache);
     }).catch(function(e){ console.error('Erro ao carregar funcionários:',e); cb({}); });
   }catch(e){ console.error('Erro ao carregar funcionários:',e); cb({}); }
-}
+};
 
 function buscar(){
   const q=document.getElementById('busca').value.trim().toLowerCase();
@@ -3367,14 +3367,17 @@ function buscar(){
     if(!baseEl) return;
     if(!matches.length){ baseEl.innerHTML=''; return; }
     baseEl.innerHTML = '<div class="sec-lbl" style="margin-top:8px;">📋 Cadastro (base de dados — sem movimentação registrada)</div>' + matches.map(function(f){
+      const desligBadge = f.desligamento ? `<span class="badge" style="background:#FEF0EE;color:#C0392B;">Desligado ${f.desligamento}</span>` : `<span class="badge b-green">Ativo</span>`;
       return `<div class="li">
         <div style="flex:1">
           <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
             <span class="li-main">${f.nome||'-'}</span>
             <span class="badge" style="background:#EBF3FE;color:#1a6bb5;">Matrícula ${f.matricula}</span>
+            ${desligBadge}
           </div>
           <div class="li-sub">CPF: ${f.cpf||'-'} · ${f.telefone||'-'}</div>
           <div class="li-sub">${f.empresa||'-'}</div>
+          <div class="li-sub">Admissão: ${f.admissao||'-'}${f.desligamento?` · Desligamento: ${f.desligamento}`:''}</div>
         </div>
       </div>`;
     }).join('');
@@ -3557,7 +3560,7 @@ function marcarDescarteLav(devId){
 // Quando uma entrada com fornecedor LAVANDERIA é registrada,
 // marcar os itens correspondentes como retornados na fila
 // Busca dados do funcionário pela matrícula (via Firebase, alimentado pela planilha BASE DE DADOS)
-function buscarFuncionarioPorMatricula(prefixo){
+window.buscarFuncionarioPorMatricula=function(prefixo){
   var matriculaEl=document.getElementById(prefixo+'-matricula');
   var statusEl=document.getElementById(prefixo+'-matricula-status');
   var matricula=matriculaEl?matriculaEl.value.trim():'';
@@ -3602,9 +3605,9 @@ function buscarFuncionarioPorMatricula(prefixo){
     console.error('Erro ao buscar funcionário:',e);
     if(statusEl){statusEl.textContent='⚠ Erro ao buscar. Tente novamente.';statusEl.style.color='#C0392B';}
   });
-}
+};
 
-function marcarRetornoLavanderia(produto,tamanho,unidade,qtd){
+window.marcarRetornoLavanderia=function(produto,tamanho,unidade,qtd){
   if(!db.lavanderia) return;
   var pendentes=db.lavanderia.filter(function(x){
     return x.status==='aguardando'&&x.produto===produto&&x.tamanho===tamanho&&x.unidade===unidade;
@@ -3635,8 +3638,7 @@ function marcarRetornoLavanderia(produto,tamanho,unidade,qtd){
   });
   save();
   if(typeof renderDevs==='function') renderDevs();
-}
-window.marcarRetornoLavanderia = marcarRetornoLavanderia;
+};
 
 function renderAdmTransferencias(){
   var el=document.getElementById('adm-transf-lista');

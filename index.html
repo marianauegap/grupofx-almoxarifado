@@ -3423,6 +3423,23 @@ function salvarFornecedor(){
   const nome = document.getElementById('cad-forn-nome').value.trim().toUpperCase();
   if(!nome){showAlert&&showAlert('','Informe o nome.','err');toast('⚠ Informe o nome do fornecedor.');return;}
   if(!db.fornecedores) db.fornecedores=[];if(!db.transferencias) db.transferencias=[];if(!db.lavanderia) db.lavanderia=[];
+  if(db.fornecedores.find(f=>f.nome===nome)){toast('⚠ Fornecedor já cadastrado!');return;}
+  db.fornecedores.push({
+    nome,
+    tipo: document.getElementById('cad-forn-tipo').value,
+    cnpj: document.getElementById('cad-forn-cnpj').value.trim(),
+    tel:  document.getElementById('cad-forn-tel').value.trim(),
+    email:document.getElementById('cad-forn-email').value.trim(),
+    obs:  document.getElementById('cad-forn-obs').value.trim(),
+    data: new Date().toLocaleDateString('pt-BR')
+  });
+  save();
+  ['cad-forn-nome','cad-forn-cnpj','cad-forn-tel','cad-forn-email','cad-forn-obs'].forEach(id=>document.getElementById(id).value='');
+  toast('✅ Fornecedor cadastrado com sucesso!');
+  renderCadastros();
+  // Atualiza select de fornecedor na entrada
+  buildFornOptions('ent-forn');
+}
 
 function lavMudarAba(btn,aba){
   window._lavAba=aba;
@@ -3714,23 +3731,6 @@ function renderRelatorio(){
   });
   html+='</tbody></table></div></div>';
   el.innerHTML=html;
-}
-  if(db.fornecedores.find(f=>f.nome===nome)){toast('⚠ Fornecedor já cadastrado!');return;}
-  db.fornecedores.push({
-    nome,
-    tipo: document.getElementById('cad-forn-tipo').value,
-    cnpj: document.getElementById('cad-forn-cnpj').value.trim(),
-    tel:  document.getElementById('cad-forn-tel').value.trim(),
-    email:document.getElementById('cad-forn-email').value.trim(),
-    obs:  document.getElementById('cad-forn-obs').value.trim(),
-    data: new Date().toLocaleDateString('pt-BR')
-  });
-  save();
-  ['cad-forn-nome','cad-forn-cnpj','cad-forn-tel','cad-forn-email','cad-forn-obs'].forEach(id=>document.getElementById(id).value='');
-  toast('✅ Fornecedor cadastrado com sucesso!');
-  renderCadastros();
-  // Atualiza select de fornecedor na entrada
-  buildFornOptions('ent-forn');
 }
 
 function salvarProduto(){

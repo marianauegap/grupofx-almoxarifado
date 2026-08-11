@@ -3318,13 +3318,25 @@ function renderAlertas(){
 // ============================================================
 // CONSULTA
 // ============================================================
+// Cache local dos funcionários vindos do Firebase (evita buscar tudo de novo a cada letra digitada)
+var _funcionariosCache=null;
+function carregarFuncionariosCache(cb){
+  if(_funcionariosCache){ cb(_funcionariosCache); return; }
+  try{
+    if(typeof firebase==='undefined'||!firebase.apps||!firebase.apps.length){ cb({}); return; }
+    firebase.database().ref('funcionarios').once('value').then(function(snap){
+      _funcionariosCache=snap.val()||{};
+      cb(_funcionariosCache);
+    }).catch(function(e){ console.error('Erro ao carregar funcionários:',e); cb({}); });
+  }catch(e){ console.error('Erro ao carregar funcionários:',e); cb({}); }
+}
+
 function buscar(){
   const q=document.getElementById('busca').value.trim().toLowerCase();
   const res=document.getElementById('busca-res');
   if(q.length<2){res.innerHTML='<div class="empty">Digite para buscar...</div>';return;}
   const found=[...db.saidas,...db.devolucoes].filter(s=>s.nome?.toLowerCase().includes(q)||s.cpf?.includes(q)||(s.cliente||s.empresa||'').toLowerCase().includes(q));
-  if(!found.length){res.innerHTML='<div class="empty">Nenhum resultado encontrado.</div>';return;}
-  res.innerHTML=found.map(s=>`
+  const htmlHistorico=found.map(s=>`
     <div class="li"><div style="display:flex;justify-content:space-between;align-items:flex-start">
       <div style="flex:1">
         <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
@@ -3337,6 +3349,36 @@ function buscar(){
       </div>
       ${s.tipo!=='devolucao'?`<button onclick="abrirComp(${s.id})" style="background:var(--blue);color:#fff;border:none;border-radius:var(--r);padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;margin-left:8px">🖨️</button>`:''}
     </div></div>`).join('');
+  res.innerHTML = (htmlHistorico || '<div class="empty">Nenhum resultado no histórico ainda.</div>') + '<div id="busca-res-base" style="margin-top:6px;"><div class="li-sub" style="padding:8px 2px;">🔎 Buscando também na base de dados...</div></div>';
+
+  // Busca complementar na BASE DE DADOS (Firebase) — mostra cadastro mesmo sem histórico de saída/devolução
+  carregarFuncionariosCache(function(funcionarios){
+    const qAtual=document.getElementById('busca')?.value.trim().toLowerCase();
+    if(qAtual!==q) return; // usuário já digitou outra coisa, ignora resultado antigo
+    const jaListadosCpf=new Set(found.map(s=>(s.cpf||'').replace(/\D/g,'')).filter(Boolean));
+    const matches=Object.keys(funcionarios).map(function(matricula){
+      return Object.assign({matricula:matricula}, funcionarios[matricula]);
+    }).filter(function(f){
+      const cpfLimpo=(f.cpf||'').replace(/\D/g,'');
+      if(cpfLimpo && jaListadosCpf.has(cpfLimpo)) return false; // já apareceu no histórico, não duplica
+      return (f.nome||'').toLowerCase().includes(q) || (f.cpf||'').includes(q) || (f.empresa||'').toLowerCase().includes(q) || (f.matricula||'').includes(q);
+    });
+    const baseEl=document.getElementById('busca-res-base');
+    if(!baseEl) return;
+    if(!matches.length){ baseEl.innerHTML=''; return; }
+    baseEl.innerHTML = '<div class="sec-lbl" style="margin-top:8px;">📋 Cadastro (base de dados — sem movimentação registrada)</div>' + matches.map(function(f){
+      return `<div class="li">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+            <span class="li-main">${f.nome||'-'}</span>
+            <span class="badge" style="background:#EBF3FE;color:#1a6bb5;">Matrícula ${f.matricula}</span>
+          </div>
+          <div class="li-sub">CPF: ${f.cpf||'-'} · ${f.telefone||'-'}</div>
+          <div class="li-sub">${f.empresa||'-'}</div>
+        </div>
+      </div>`;
+    }).join('');
+  });
 }
 
 // ============================================================
@@ -3521,8 +3563,16 @@ function buscarFuncionarioPorMatricula(prefixo){
   var matricula=matriculaEl?matriculaEl.value.trim():'';
   if(!matricula){ if(statusEl){statusEl.textContent='⚠ Digite a matrícula.';statusEl.style.color='#C0392B';} return; }
   if(statusEl){statusEl.textContent='🔎 Buscando...';statusEl.style.color='var(--muted)';}
-  if(typeof fbDb==='undefined'||!fbDb){ if(statusEl){statusEl.textContent='⚠ Firebase indisponível.';statusEl.style.color='#C0392B';} return; }
-  fbDb.ref('funcionarios/'+matricula).once('value').then(function(snap){
+  var dbRef;
+  try{
+    if(typeof firebase==='undefined'||!firebase.apps||!firebase.apps.length){ throw new Error('Firebase não carregado'); }
+    dbRef=firebase.database().ref('funcionarios/'+matricula);
+  }catch(e){
+    console.error('Erro ao acessar Firebase:',e);
+    if(statusEl){statusEl.textContent='⚠ Firebase indisponível no momento.';statusEl.style.color='#C0392B';}
+    return;
+  }
+  dbRef.once('value').then(function(snap){
     var dados=snap.val();
     if(!dados){
       if(statusEl){statusEl.textContent='❌ Matrícula não encontrada na base.';statusEl.style.color='#C0392B';}
